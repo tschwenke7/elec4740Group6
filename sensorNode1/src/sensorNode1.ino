@@ -20,7 +20,7 @@ const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 /*Temperature sensor variables */
 const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint8_t TEMPERATURE_READ_DELAY = 5000;
+const uint16_t TEMPERATURE_READ_DELAY = 5000;
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
@@ -31,7 +31,7 @@ BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid
 /* Light sensor variables */
 const int lightPin = A1; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint8_t LIGHT_READ_DELAY = 5000;
+const uint16_t LIGHT_READ_DELAY = 5000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
@@ -41,7 +41,7 @@ BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 /* Humidity sensor variables */
 const int humidityPin = A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint8_t HUMIDITY_READ_DELAY = 5000;
+const uint16_t HUMIDITY_READ_DELAY = 5000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
@@ -51,7 +51,7 @@ BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
 /* Distance sensor variables */
 const int distancePin = D0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint8_t DISTANCE_READ_DELAY = 5000;
+const uint16_t DISTANCE_READ_DELAY = 5000;
 unsigned long lastDistanceUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* distanceSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
@@ -91,10 +91,12 @@ void setup() {
     advData.appendServiceUUID(sensorNode1ServiceUuid);
 
     // Continuously advertise when not connected to clusterhead
+    Log.info("Start advertising");
     BLE.advertise(&advData);
 }
 
 void loop() {
+    Log.info("not connected yet... ");
     //only begin using sensors when this node has connected to a cluster head
     if(BLE.connected()){
         long currentTime = millis();//record current time
@@ -108,6 +110,7 @@ void loop() {
             uint16_t getValue = readTemperature();
             temperatureSensorCharacteristic.setValue(getValue);
             temperatureCloud = getValue;
+            Log.info("Temperature: " + getValue);
         }
         //light
         if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
@@ -115,6 +118,7 @@ void loop() {
             uint16_t getValue = readLight();
             lightSensorCharacteristic.setValue(getValue);
             lightCloud = getValue;
+            Log.info("Light: " + getValue);
         }
         //humidity
         if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
@@ -122,7 +126,7 @@ void loop() {
             uint16_t getValue = readHumidity();
             humiditySensorCharacteristic.setValue(getValue);
             humidityCloud = getValue;
-            
+            Log.info("Humidity: " + getValue);
         }
         //distance
         if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
@@ -130,8 +134,8 @@ void loop() {
             uint16_t getValue = readDistance();
             distanceSensorCharacteristic.setValue(getValue);
             distanceCloud = getValue;
+            Log.info("Distance: " + getValue);
         }
-        
     }
 }
 
@@ -141,7 +145,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readTemperature(){
     //do any transformation logic we might want
     //return analogRead(temperaturePin);
-    return 0xffffff;
+    return 0x0001;
 }
 
 /* Read the value on the light sensor pin 
@@ -150,7 +154,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readLight(){
    //do any transformation logic we might want
    //return analogRead(lightPin);
-   return 0x040506;
+   return 0x0002;
 }
 
 /* Read the value on the humidity sensor pin 
@@ -159,7 +163,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readHumidity(){
    //do any transformation logic we might want
    //return analogRead(humidityPin);
-   return 0x000005;
+   return 0x0003;
 }
 
 /* Read the distance */
@@ -170,5 +174,5 @@ uint16_t readDistance(){
     //disable pin to save power
     
     //do any transformation logic we might want
-   return 0x123456;//placeholder output value to use if sensor isnt connected
+   return 0x0004U;//placeholder output value to use if sensor isnt connected
 }

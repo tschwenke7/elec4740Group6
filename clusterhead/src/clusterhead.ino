@@ -49,7 +49,7 @@ void scanResultCallback(const BleScanResult *scanResult, void *context);
 void loop() {
 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected() && sensorNode2.connected()) {
+    if (sensorNode1.connected() /*&& sensorNode2.connected()*/) {
         //do stuff here
     }
     //if we haven't connected both, then scan for them
