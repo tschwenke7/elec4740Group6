@@ -1,31 +1,9 @@
-/******************************************************/
-//       THIS IS A GENERATED FILE - DO NOT EDIT       //
-/******************************************************/
-
 #include "Particle.h"
-#line 1 "c:/Users/tschw/repos/elec4740Group6/elec4740Assignment1/src/clusterHead.ino"
-/*
- * clusterHead.ino
- * Description: code to flash to the clusterhead argon for assignment 1
- * Author: Tom Schwenke
- * Date: 08/04/2020
- */
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
 // SYSTEM_MODE(MANUAL);
 
-void setup();
-void loop();
-void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 12 "c:/Users/tschw/repos/elec4740Group6/elec4740Assignment1/src/clusterHead.ino"
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 //bluetooth devices we want to connect to and their service ids

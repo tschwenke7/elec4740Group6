@@ -1,10 +1,10 @@
-# elec4740Assignment1
+# sensorNode1
 
-A Particle project named elec4740Assignment1
+A Particle project named sensorNode1
 
 ## Welcome to your project!
 
-Every new Particle project is composed of 3 important elements that you'll see have been created in your project directory for elec4740Assignment1.
+Every new Particle project is composed of 3 important elements that you'll see have been created in your project directory for sensorNode1.
 
 #### ```/src``` folder:  
 This is the source folder that contains the firmware files for your project. It should *not* be renamed. 

@@ -1,9 +1,4 @@
-/******************************************************/
-//       THIS IS A GENERATED FILE - DO NOT EDIT       //
-/******************************************************/
-
 #include "Particle.h"
-#line 1 "c:/Users/tschw/repos/elec4740Group6/elec4740Assignment1/src/sensorNode1.ino"
 /*
  * sensorNode1.ino
  * Description: code to flash to the "sensor node 1" argon for assignment 1
@@ -15,13 +10,6 @@
 // normal cloud-connected mode
 // SYSTEM_MODE(MANUAL);
 
-void setup();
-void loop();
-uint16_t readTemperature();
-uint16_t readLight();
-uint16_t readHumidity();
-uint16_t readDistance();
-#line 12 "c:/Users/tschw/repos/elec4740Group6/elec4740Assignment1/src/sensorNode1.ino"
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 /* Service UUID for sensor node 1. It is advertised as one service, 
@@ -152,7 +140,8 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
 uint16_t readTemperature(){
     //do any transformation logic we might want
-    return analogRead(temperaturePin);
+    //return analogRead(temperaturePin);
+    return 0xffffff;
 }
 
 /* Read the value on the light sensor pin 
@@ -160,7 +149,8 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
 uint16_t readLight(){
    //do any transformation logic we might want
-   return analogRead(lightPin);
+   //return analogRead(lightPin);
+   return 0x040506;
 }
 
 /* Read the value on the humidity sensor pin 
@@ -168,7 +158,8 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
 uint16_t readHumidity(){
    //do any transformation logic we might want
-   return analogRead(humidityPin);
+   //return analogRead(humidityPin);
+   return 0x000005;
 }
 
 /* Read the distance */
