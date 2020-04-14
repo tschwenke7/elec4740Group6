@@ -4,6 +4,7 @@
 
 #line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
+#include <string>
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
@@ -19,14 +20,14 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 7 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 8 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 //bluetooth devices we want to connect to and their service ids
 BlePeerDevice sensorNode1; //"754ebf5e-ce31-4300-9fd5-a8fb4ee4a811"
 BlePeerDevice sensorNode2;
-const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
-const char* sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
+BleUuid sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
+BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 
 //characteristics we want to track
 //for sensor node 1
@@ -63,14 +64,16 @@ void setup() {
 void scanResultCallback(const BleScanResult *scanResult, void *context);
 
 void loop() {
-
+    Log.info("Loop entered");
     //do stuff if both sensors have been connected
     if (sensorNode1.connected() /*&& sensorNode2.connected()*/) {
+        Log.info("Connected!");
         //do stuff here
     }
     //if we haven't connected both, then scan for them
     else {
         // We are not connected to our sensors, scan for them
+        Log.info("About to scan...");
         int count = BLE.scan(scanResultCallback, NULL);
         if (count > 0) {
             Log.info("%d devices found", count);
@@ -80,15 +83,16 @@ void loop() {
 
 /* function which executes while scanning on each bluetooth device which is discovered, to decide whether to conneect */
 void scanResultCallback(const BleScanResult *scanResult, void *context) {
+    Log.info("Found a bluetooth device...");
     //print info about the found bluetooth device
     Log.info("MAC: %02X:%02X:%02X:%02X:%02X:%02X | RSSI: %dBm",
             scanResult->address[0], scanResult->address[1], scanResult->address[2],
             scanResult->address[3], scanResult->address[4], scanResult->address[5], scanResult->rssi);
 
-    String name = scanResult->advertisingData.deviceName();
-    if (name.length() > 0) {
-        Log.info("deviceName: %s", name.c_str());
-    }
+    // String name = scanResult->advertisingData.deviceName();
+    // if (name.length() > 0) {
+    //     Log.info("deviceName: %s", name.c_str());
+    // }
     
     /* Connect if it is one of our sensors */
     //After connecting, this is how long to wait without connection before determining that the other side is no longer available
@@ -96,11 +100,17 @@ void scanResultCallback(const BleScanResult *scanResult, void *context) {
     uint16_t timeoutInterval = 1000;
     //read the serviceUUID being advertised by this device
     BleUuid foundServiceUUID;
-    size_t svcCount = scanResult->advertisingData.serviceUUID(&foundServiceUUID, 1);
-    
+    size_t svcCount = scanResult->advertisingData.serviceUUID(&foundServiceUUID, 1);    
     //check if it matches sensorNode1
+
+    Log.info("Found UUID: " + foundServiceUUID.toString());
+    Log.info("Target UUID: " + sensorNode1ServiceUuid.toString());
+    Log.info("Match? " + (sensorNode1ServiceUuid == foundServiceUUID));
+    Log.info(scanResult->address.toString());
+    Log.info("Already connected? " + sensorNode1.connected());
     if (sensorNode1.connected() == false && svcCount > 0 && foundServiceUUID == sensorNode1ServiceUuid) {
-        sensorNode1 = BLE.connect(scanResult->address,24 ,0, timeoutInterval);//24 and 0 are default values
+        Log.info("Attempting to connect to sensor node 1...");
+        sensorNode1 = BLE.connect("D7:C8:38:F8:2E:06"/*,24 ,0, timeoutInterval*/);//24 and 0 are default values
         if(sensorNode1.connected()){
             Log.info("Successfully connected to sensor node 1!");
             //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
@@ -124,7 +134,7 @@ void scanResultCallback(const BleScanResult *scanResult, void *context) {
         }
     }
     else{
-        Log.info("Ignored a bluetooth device which wasn't one of ours.");
+        Log.info("Ignored - it wasn't one of ours.");
     }
 }
 
