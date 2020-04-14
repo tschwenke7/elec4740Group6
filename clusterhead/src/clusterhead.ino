@@ -1,5 +1,10 @@
 #include "Particle.h"
-#include <string>
+/*
+ * clusterhead.ino
+ * Description: code to flash to the "clusterhead" argon for assignment 1
+ * Author: Tom Schwenke
+ * Date: 14/04/2020
+ */
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
@@ -27,6 +32,8 @@ BleCharacteristic soundSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
+const size_t SCAN_RESULT_MAX = 30;
+BleScanResult scanResults[SCAN_RESULT_MAX];
 
 void setup() {
     (void)logHandler; // Does nothing, just to eliminate the unused variable warning
@@ -48,91 +55,67 @@ void setup() {
 void scanResultCallback(const BleScanResult *scanResult, void *context);
 
 void loop() {
-    Log.info("Loop entered");
     //do stuff if both sensors have been connected
     if (sensorNode1.connected() /*&& sensorNode2.connected()*/) {
-        Log.info("Connected!");
         //do stuff here
     }
     //if we haven't connected both, then scan for them
     else {
-        // We are not connected to our sensors, scan for them
         Log.info("About to scan...");
-        int count = BLE.scan(scanResultCallback, NULL);
+        int count = BLE.scan(scanResults, SCAN_RESULT_MAX);
+        for (int i = 0; i < count; i++) {
+            BleUuid foundService;
+            size_t len;
+
+            //Read the service UUID of this BT device
+            len = scanResults[i].advertisingData.serviceUUID(&foundService, 1);
+
+            Log.info("Found a bluetooth device.");
+            Log.info("Address: " + scanResults[i].address.toString());
+            Log.info("Found UUID: " + foundService.toString());
+            Log.info("Target UUID: " + sensorNode1ServiceUuid.toString());
+
+            //Check if it matches UUID for sensor node 1
+            if (len > 0 && foundService == sensorNode1ServiceUuid){
+                Log.info("Found sensor node 1.");
+                if(sensorNode1.connected() == false){
+                    sensorNode1 = BLE.connect(scanResults[i].address);
+                    if(sensorNode1.connected()){
+                        Log.info("Successfully connected to sensor node 1!");
+                        //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
+                        sensorNode1.getCharacteristicByUUID(temperatureSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                    }
+                    else{
+                        Log.info("Failed to connect to sensor node 1.");
+                    }
+                }
+                else{
+                    Log.info("Sensor node 1 already connected.");
+                }
+            }
+        }
+
         if (count > 0) {
             Log.info("%d devices found", count);
         }
     }
 }
 
-/* function which executes while scanning on each bluetooth device which is discovered, to decide whether to conneect */
-void scanResultCallback(const BleScanResult *scanResult, void *context) {
-    Log.info("Found a bluetooth device...");
-    //print info about the found bluetooth device
-    Log.info("MAC: %02X:%02X:%02X:%02X:%02X:%02X | RSSI: %dBm",
-            scanResult->address[0], scanResult->address[1], scanResult->address[2],
-            scanResult->address[3], scanResult->address[4], scanResult->address[5], scanResult->rssi);
-
-    // String name = scanResult->advertisingData.deviceName();
-    // if (name.length() > 0) {
-    //     Log.info("deviceName: %s", name.c_str());
-    // }
-    
-    /* Connect if it is one of our sensors */
-    //After connecting, this is how long to wait without connection before determining that the other side is no longer available
-    //Connection timeout is in units of 10 milliseconds. e.g. 1000 = 10 seconds 
-    uint16_t timeoutInterval = 1000;
-    //read the serviceUUID being advertised by this device
-    BleUuid foundServiceUUID;
-    size_t svcCount = scanResult->advertisingData.serviceUUID(&foundServiceUUID, 1);    
-    //check if it matches sensorNode1
-
-    Log.info("Found UUID: " + foundServiceUUID.toString());
-    Log.info("Target UUID: " + sensorNode1ServiceUuid.toString());
-    Log.info(scanResult->address.toString());//prints "D7:C8:38:F8:2E:06"
-
-    if (sensorNode1.connected() == false && svcCount > 0 && foundServiceUUID == sensorNode1ServiceUuid) {
-        Log.info("Attempting to connect to sensor node 1...");
-        sensorNode1 = BLE.connect(scanResult->address/*"D7:C8:38:F8:2E:06"*//*,24 ,0, timeoutInterval*/);//24 and 0 are default values
-        if(sensorNode1.connected()){
-            Log.info("Successfully connected to sensor node 1!");
-            //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
-            sensorNode1.getCharacteristicByUUID(temperatureSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
-            sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
-            sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "bc7f18d9-2c43-408e-be25-62f40645987c");
-            sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "bc7f18d9-2c43-408e-be25-62f40645987c");
-        }
-        else{
-            Log.info("Failed to connect to sensor node 1.");
-        }
-    }
-    //check if it matches sensorNode2
-    else if (sensorNode2.connected() == false && svcCount > 0 && foundServiceUUID == sensorNode2ServiceUuid) {
-        sensorNode2 = BLE.connect(scanResult->address,24 ,0, timeoutInterval);
-        if(sensorNode1.connected()){
-            Log.info("Successfully connected to sensor node 2!");
-        }
-        else{
-            Log.info("Failed to connect to sensor node 2.");
-        }
-    }
-    else{
-        Log.info("Ignored - it wasn't one of ours.");
-    }
-}
-
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-
+    Log.info("Temp1 received.");
 }
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    Log.info("Light1 received.");
 }
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    Log.info("Humididty received.");
 }
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    Log.info("Distance received.");
 }
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     

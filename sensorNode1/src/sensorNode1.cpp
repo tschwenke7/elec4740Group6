@@ -108,7 +108,6 @@ void setup() {
 }
 
 void loop() {
-    Log.info("not connected yet... ");
     //only begin using sensors when this node has connected to a cluster head
     if(BLE.connected()){
         long currentTime = millis();//record current time
@@ -148,6 +147,9 @@ void loop() {
             distanceCloud = getValue;
             Log.info("Distance: " + getValue);
         }
+    }
+    else{
+        Log.info("not connected yet... ");
     }
 }
 
