@@ -8,7 +8,7 @@
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
  * Author: Tom Schwenke
- * Date: 14/04/2020
+ * Date: 15/04/2020
  */
 
 // This example does not require the cloud so you can run it in manual mode or
@@ -67,12 +67,9 @@ void setup() {
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
 }
 
-/* function which executes while scanning on each bluetooth device which is discovered, to decide whether to conneect */
-void scanResultCallback(const BleScanResult *scanResult, void *context);
-
-void loop() {
+void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected() /*&& sensorNode2.connected()*/) {
+    if (sensorNode2.connected() /*&& sensorNode2.connected()*/) {
         //do stuff here
     }
     //if we haven't connected both, then scan for them
@@ -89,7 +86,8 @@ void loop() {
             Log.info("Found a bluetooth device.");
             Log.info("Address: " + scanResults[i].address.toString());
             Log.info("Found UUID: " + foundService.toString());
-            Log.info("Target UUID: " + sensorNode1ServiceUuid.toString());
+            Log.info("SensorNode1 UUID: " + sensorNode1ServiceUuid.toString());
+            Log.info("SensorNode2 UUID: " + sensorNode2ServiceUuid.toString());
 
             //Check if it matches UUID for sensor node 1
             if (len > 0 && foundService == sensorNode1ServiceUuid){
@@ -112,6 +110,28 @@ void loop() {
                     Log.info("Sensor node 1 already connected.");
                 }
             }
+
+            //Check if it matches UUID for sensor node 2
+            else if (len > 0 && foundService == sensorNode2ServiceUuid){
+                Log.info("Found sensor node 2.");
+                if(sensorNode2.connected() == false){
+                    sensorNode2 = BLE.connect(scanResults[i].address);
+                    if(sensorNode2.connected()){
+                        Log.info("Successfully connected to sensor node 2!");
+                        //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
+                        sensorNode2.getCharacteristicByUUID(temperatureSensorCharacteristic2, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode2.getCharacteristicByUUID(lightSensorCharacteristic2, "ea5248a4-43cc-4198-a4aa-79200a750835");
+                        sensorNode2.getCharacteristicByUUID(soundSensorCharacteristic, "88ba2f5d-1e98-49af-8697-d0516df03be9");
+                        sensorNode2.getCharacteristicByUUID(humanDetectorCharacteristic, "b482d551-c3ae-4dde-b125-ce244d7896b0");
+                    }
+                    else{
+                        Log.info("Failed to connect to sensor node 2.");
+                    }
+                }
+                else{
+                    Log.info("Sensor node 2 already connected.");
+                }
+            }
         }
 
         if (count > 0) {
@@ -124,32 +144,49 @@ void loop() {
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Temp1 received: %u", twoByteValue);
+    Log.info("Sensor 1 - Temperature: %u", twoByteValue);
 }
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Light1 received: %u", twoByteValue);
+    Log.info("Sensor 1 - Light: %u", twoByteValue);
 }
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Humidity received: %u", twoByteValue);
+    Log.info("Sensor 1 - Humidity: %u", twoByteValue);
 }
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Distance received: %u", twoByteValue);
+    Log.info("Sensor 1 - Distance: %u", twoByteValue);
 }
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Sensor 2 - Temperature: %u", twoByteValue);
 }
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Sensor 2 - Light: %u", twoByteValue);
 }
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Sensor 2 - Sound: %u", twoByteValue);
 }
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    
+    uint16_t humanSeen;
+    memcpy(&humanSeen, &data[0], sizeof(uint8_t));
+    Log.info("Sensor 2 - Human detector: %u", humanSeen);
+    if(humanSeen == 0x00){
+        Log.info("Sensor 2 - Human lost...");
+    }
+    else if (humanSeen == 0x01){
+        Log.info("Sensor 2 - Human detected!");
+    }
+    else{
+        Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
+    }
 }

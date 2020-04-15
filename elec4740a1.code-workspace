@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "clusterhead"
+		},
+		{
+			"path": "sensorNode1"
+		},
+		{
+			"path": "sensorNode2"
+		}
+	],
+	"settings": {
+		"extensions.ignoreRecommendations": true,
+		"cortex-debug.openocdPath": "${command:particle.getDebuggerOpenocdPath}",
+		"files.associations": {
+			"*.ino": "cpp"
+		}
+	}
+}

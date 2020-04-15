@@ -8,7 +8,7 @@
  * sensorNode1.ino
  * Description: code to flash to the "sensor node 1" argon for assignment 1
  * Author: Tom Schwenke
- * Date: 08/04/2020
+ * Date: 15/04/2020
  */
 
 // This example does not require the cloud so you can run it in manual mode or
