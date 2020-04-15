@@ -84,9 +84,9 @@ void loop() {
                         Log.info("Successfully connected to sensor node 1!");
                         //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
                         sensorNode1.getCharacteristicByUUID(temperatureSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
-                        sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
-                        sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "bc7f18d9-2c43-408e-be25-62f40645987c");
-                        sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "ea5248a4-43cc-4198-a4aa-79200a750835");
+                        sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
+                        sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "45be4a56-48f5-483c-8bb1-d3fee433c23c");
                     }
                     else{
                         Log.info("Failed to connect to sensor node 1.");
