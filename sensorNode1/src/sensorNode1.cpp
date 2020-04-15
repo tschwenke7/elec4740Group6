@@ -13,15 +13,15 @@
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
-// SYSTEM_MODE(MANUAL);
-
 void setup();
 void loop();
 uint16_t readTemperature();
 uint16_t readLight();
 uint16_t readHumidity();
 uint16_t readDistance();
-#line 13 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 11 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+SYSTEM_MODE(MANUAL);
+
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 /* Service UUID for sensor node 1. It is advertised as one service, 

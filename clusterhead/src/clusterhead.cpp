@@ -13,8 +13,6 @@
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
-// SYSTEM_MODE(MANUAL);
-
 void setup();
 void loop();
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
@@ -25,7 +23,9 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 13 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 11 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+SYSTEM_MODE(MANUAL);
+
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 //bluetooth devices we want to connect to and their service ids
@@ -69,7 +69,7 @@ void setup() {
 
 void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode2.connected() /*&& sensorNode2.connected()*/) {
+    if (sensorNode1.connected() && sensorNode2.connected()) {
         //do stuff here
     }
     //if we haven't connected both, then scan for them
