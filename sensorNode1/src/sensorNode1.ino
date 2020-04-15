@@ -147,7 +147,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readTemperature(){
     //do any transformation logic we might want
     //return analogRead(temperaturePin);
-    return 0x0001;
+    return 0x0002;
 }
 
 /* Read the value on the light sensor pin 
@@ -156,7 +156,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readLight(){
    //do any transformation logic we might want
    //return analogRead(lightPin);
-   return 0x0002;
+   return 4053;
 }
 
 /* Read the value on the humidity sensor pin 
@@ -165,7 +165,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readHumidity(){
    //do any transformation logic we might want
    //return analogRead(humidityPin);
-   return 0x0003;
+   return 0x0002;
 }
 
 /* Read the distance */
@@ -176,5 +176,5 @@ uint16_t readDistance(){
     //disable pin to save power
     
     //do any transformation logic we might want
-   return 0x0004U;//placeholder output value to use if sensor isnt connected
+   return 0x0FF2;//placeholder output value to use if sensor isnt connected
 }

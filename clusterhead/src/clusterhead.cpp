@@ -122,16 +122,24 @@ void loop() {
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    Log.info("Temp1 received.");
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Temp1 received: %u", twoByteValue);
 }
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    Log.info("Light1 received.");
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Light1 received: %u", twoByteValue);
 }
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    Log.info("Humididty received.");
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Humidity received: %u", twoByteValue);
 }
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    Log.info("Distance received.");
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    Log.info("Distance received: %u", twoByteValue);
 }
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     
@@ -145,24 +153,3 @@ void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     
 }
-
-// void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
-//     uint8_t flags = data[0];
-
-//     uint16_t rate;
-//     if (flags & 0x01) {
-//         // Rate is 16 bits
-//         memcpy(&rate, &data[1], sizeof(uint16_t));
-//     }
-//     else {
-//         // Rate is 8 bits (normal case)
-//         rate = data[1];
-//     }
-//     if (rate != lastRate) {
-//         lastRate = rate;
-//         updateDisplay = true;
-//     }
-
-//     Log.info("heart rate=%u", rate);
-// }
-
