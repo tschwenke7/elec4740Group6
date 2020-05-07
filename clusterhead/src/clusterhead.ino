@@ -1,4 +1,5 @@
 #include "Particle.h"
+#include "dct.h"
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -8,7 +9,7 @@
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
-SYSTEM_MODE(MANUAL);
+SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -36,6 +37,8 @@ const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
 void setup() {
+    const uint8_t val = 0x01;
+    dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
     (void)logHandler; // Does nothing, just to eliminate the unused variable warning
 
     BLE.on();
@@ -141,9 +144,9 @@ void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Humidity: %u", twoByteValue);
 }
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Distance: %u", twoByteValue);
+    uint8_t byteValue;
+    memcpy(&byteValue, &data[0], sizeof(uint8_t));
+    Log.info("Sensor 1 - Distance: %u cm", byteValue);
 }
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
@@ -174,31 +177,3 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
 }
-
-// #include <chrono>
-// #include <iostream>
-// #include <cstring>
-
-
-
-// int main() {
-//     uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-//     std::cout << "Time: " << now << std::endl;
-    
-//     uint16_t sound = 0x1212;
-    
-//     //package up in a buffer of bytes
-//     char* payload[10];
-//     memcpy(payload, &now, sizeof(now));
-//     memcpy(payload + sizeof(now), &sound, sizeof(sound));
-    
-//     //unpackage
-//     uint64_t receivedTime;
-//     uint16_t receivedSound;
-//     memcpy(&receivedTime, &payload[0], sizeof(receivedTime));
-//     memcpy(&receivedSound, &payload[0] + sizeof(receivedTime), sizeof(receivedSound));
-    
-//     std::cout << "Received: " << receivedSound << " at time: " << receivedTime << std::endl;
-    
-//     return 0;
-// }
