@@ -1,15 +1,14 @@
 
 #include "Particle.h"
 #include "dct.h"
+#include <chrono>
+
 /*
  * sensorNode2.ino
  * Description: code to flash to the "sensor node 2" argon for assignment 1
  * Author: Tom Schwenke, Edward Ingle
- * Date: 27/04/2020
+ * Date: 07/05/2020
  */
-
-DHT dht(SDA);        //DHT for temperature/humidity 
-
 
 SYSTEM_MODE(AUTOMATIC);     //In automatic mode so it can connect to cloud
 
@@ -196,7 +195,8 @@ void loop() {
 
 /** Returns the current temperature in microseconds */
 uint64_t getCurrentTime(){
-    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    return Time.now();
+    // return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 /* Read the value on the temperature sensor pin 

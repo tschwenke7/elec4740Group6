@@ -1,10 +1,11 @@
 #include "Particle.h"
 #include "dct.h"
+#include <chrono>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
  * Author: Tom Schwenke
- * Date: 15/04/2020
+ * Date: 07/05/2020
  */
 
 // This example does not require the cloud so you can run it in manual mode or
@@ -140,7 +141,7 @@ void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDev
 
     Log.info("Sensor 1 - Temperature: %d degrees Celsius", receivedTemp);
     Log.info("Sensor 1 - Humidity: %u %%", receivedHumidity);
-    Log.info("Temp/humidity transmission delay: %u microseconds", delay);
+    // Log.info("Temp/humidity transmission delay: %llu seconds", delay);
 }
 
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -154,7 +155,7 @@ void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer
     memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
     
     Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
-    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -166,7 +167,7 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
 
     memcpy(&byteValue, &data[0], sizeof(uint8_t));
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
-    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -178,7 +179,7 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 
     memcpy(&temperature, &data[0], sizeof(temperature));
     Log.info("Sensor 2 - Temperature: %d degrees Celsius", temperature);
-    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -190,7 +191,7 @@ void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
-    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -202,11 +203,11 @@ void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     Log.info("Sensor 2 - Sound: %u dB", twoByteValue);
-    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t humanSeen;
+    uint8_t humanSeen;
     uint64_t sentTime;
 
     //read the time of sending, to calculate transmission delay
@@ -223,9 +224,10 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
     else{
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
-    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 uint64_t calculateTransmissionDelay(uint64_t sentTime){
-    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - sentTime;
+    return Time.now() - sentTime;
+    // return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - sentTime;
 }

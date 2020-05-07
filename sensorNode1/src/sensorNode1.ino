@@ -7,7 +7,7 @@
  * sensorNode1.ino
  * Description: code to flash to the "sensor node 1" argon for assignment 1
  * Author: Tom Schwenke, Edward Ingle
- * Date: 27/04/2020
+ * Date: 07/05/2020
  */
 
 DHT dht(D0);        //DHT for temperature/humidity 
@@ -177,7 +177,8 @@ void loop() {
 
 /** Returns the current temperature in microseconds */
 uint64_t getCurrentTime(){
-    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    return Time.now();
+    // return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 /* Read the value on the temperature sensor pin 
@@ -223,7 +224,7 @@ uint8_t readHumidity(){
 /* Read the distance */
 uint8_t readDistance(){
     //do any transformation logic we might want
-    uint16_t cms = (uint16_t) rangefinder.distCM();
+    uint8_t cms = (uint8_t) rangefinder.distCM();
 	char str[2];
 	sprintf(str, "%u", cms);
 	Particle.publish("distance", str, PUBLIC);
