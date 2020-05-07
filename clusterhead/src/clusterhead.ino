@@ -133,7 +133,7 @@ void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDev
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
 
-    Log.info("Sensor 1 - Temperature: %u", receivedTemp);
+    Log.info("Sensor 1 - Temperature: %d", receivedTemp);
     Log.info("Sensor 1 - Humidity: %u", receivedHumidity);
 }
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -147,9 +147,9 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
 }
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Temperature: %u", twoByteValue);
+    int8_t temperature;
+    memcpy(&temperature, &data[0], sizeof(temperature));
+    Log.info("Sensor 2 - Temperature: %d", temperature);
 }
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
