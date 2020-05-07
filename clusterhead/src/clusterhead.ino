@@ -174,3 +174,31 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
 }
+
+// #include <chrono>
+// #include <iostream>
+// #include <cstring>
+
+
+
+// int main() {
+//     uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+//     std::cout << "Time: " << now << std::endl;
+    
+//     uint16_t sound = 0x1212;
+    
+//     //package up in a buffer of bytes
+//     char* payload[10];
+//     memcpy(payload, &now, sizeof(now));
+//     memcpy(payload + sizeof(now), &sound, sizeof(sound));
+    
+//     //unpackage
+//     uint64_t receivedTime;
+//     uint16_t receivedSound;
+//     memcpy(&receivedTime, &payload[0], sizeof(receivedTime));
+//     memcpy(&receivedSound, &payload[0] + sizeof(receivedTime), sizeof(receivedSound));
+    
+//     std::cout << "Received: " << receivedSound << " at time: " << receivedTime << std::endl;
+    
+//     return 0;
+// }
