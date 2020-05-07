@@ -19,15 +19,15 @@ SerialLogHandler logHandler(LOG_LEVEL_TRACE);
    with 4 characteristics for each of its 4 sensors */
 const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 
-/*Temperature sensor variables */
-const int temperaturePin = A0; //pin reading output of temp sensor
+/*Temperature and humidity sensor variables */
+// const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t TEMPERATURE_READ_DELAY = 5000;
-unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
+const uint16_t TEMP_AND_HUMIDITY_READ_DELAY = 5000;
+unsigned long lastTempAndHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
-const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
-BleCharacteristic temperatureSensorCharacteristic("temp",
-BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
+const char* tempAndHumiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
+BleCharacteristic tempAndHumiditySensorCharacteristic("tempAndHumid",
+BleCharacteristicProperty::NOTIFY, tempAndHumiditySensorUuid, sensorNode1ServiceUuid);
 
 /* Light sensor variables */
 const int lightPin = A1; //pin reading output of sensor
@@ -38,16 +38,6 @@ unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
 BleCharacteristic lightSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
-
-/* Humidity sensor variables */
-//const int humidityPin = A0; //pin reading output of sensor
-//duration in millis to wait between reads
-const uint16_t HUMIDITY_READ_DELAY = 5000;
-unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
-//advertised bluetooth characteristic
-const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
-BleCharacteristic humiditySensorCharacteristic("temp",
-BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
 
 /* Distance sensor variables */
 const int distanceTriggerPin = D3;  //pin reading input of sensor
@@ -89,9 +79,8 @@ void setup() {
     BLE.on();//activate BT
 
     //add characteristics
-    BLE.addCharacteristic(temperatureSensorCharacteristic);
+    BLE.addCharacteristic(tempAndHumiditySensorCharacteristic);
     BLE.addCharacteristic(lightSensorCharacteristic);
-    BLE.addCharacteristic(humiditySensorCharacteristic);
     BLE.addCharacteristic(distanceSensorCharacteristic);
 
     //data to be advertised
@@ -114,14 +103,24 @@ void loop() {
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
            A change in the characteristic will notify the connected cluster head
         */
-        //temperature
-        if(currentTime - lastTemperatureUpdate >= TEMPERATURE_READ_DELAY){
-            temperatureAnaCloud = readTemperatureAna();
-            lastTemperatureUpdate = currentTime;
-            uint16_t getValue = readTemperature();
-            temperatureSensorCharacteristic.setValue(getValue);
-            temperatureCloud = getValue;
-            Log.info("Temperature: " + getValue);
+        //temperature and humidity
+        if(currentTime - lastTempAndHumidityUpdate >= TEMP_AND_HUMIDITY_READ_DELAY){
+            lastTempAndHumidityUpdate = currentTime;
+
+            uint8_t temp = readTemperature();
+            uint8_t humidity = readHumidity();
+
+            //update cloud variables if we're doing this
+            temperatureCloud = temp;
+            humidityCloud = humidity;
+
+            //package the two together in a 2-byte buffer
+            char* transmission[2];
+            memcpy(transmission, &temp, sizeof(temp));
+            memcpy(transmission + sizeof(temp), &humidity, sizeof(humidity));
+ 
+            //send bluetooth transmission
+            tempAndHumiditySensorCharacteristic.setValue(transmission);
         }
         //light
         if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
@@ -130,14 +129,6 @@ void loop() {
             lightSensorCharacteristic.setValue(getValue);
             lightCloud = getValue;
             Log.info("Light: " + getValue);
-        }
-        //humidity
-        if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
-            lastHumidityUpdate = currentTime;
-            uint16_t getValue = readHumidity();
-            humiditySensorCharacteristic.setValue(getValue);
-            humidityCloud = getValue;
-            Log.info("Humidity: " + getValue);
         }
         //distance
         if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
@@ -165,26 +156,17 @@ void loop() {
 /* Read the value on the temperature sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
-uint16_t readTemperature(){
+uint8_t readTemperature(){
     // Read temperature as Celsius
-	uint16_t t = (uint16_t) dht.getTempCelcius();   //Normally returns float
+	uint8_t t = (uint8_t) dht.getTempCelcius();   //Normally returns float
 	//May be able to change this to 8bit int - check when able.
 	char str[2];
 	sprintf(str, "%u", t);
-	//Particle.publish("temperature", str, PUBLIC);
+	Particle.publish("temperature", str, PUBLIC);
 	
 	return t;
 }
 
-uint16_t readTemperatureAna(){
-    // Read temperature as Celsius
-	uint16_t t = analogRead(temperaturePin);   //Normally returns float
-	char str[2];
-	sprintf(str, "%u", t);
-	Particle.publish("temperatureAna", str, PUBLIC);
-	
-	return t;
-}
 /* Read the value on the light sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
@@ -200,9 +182,9 @@ uint16_t readLight(){
 /* Read the value on the humidity sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
-uint16_t readHumidity(){
+uint8_t readHumidity(){
     //Read Humidity
-	uint16_t h = (uint16_t) dht.getHumidity(); //normally returns float, casted to uint16_t
+	uint8_t h = (uint8_t) dht.getHumidity(); //normally returns float, casted to uint16_t
 	//May be able to change this to 8bit int - check when able.
 	char str[2];
 	sprintf(str, "%u", h);

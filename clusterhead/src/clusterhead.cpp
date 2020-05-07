@@ -4,6 +4,7 @@
 
 #line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
+#include "dct.h"
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -15,7 +16,7 @@
 // normal cloud-connected mode
 void setup();
 void loop();
-void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
+void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
@@ -23,8 +24,8 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 11 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
-SYSTEM_MODE(MANUAL);
+#line 12 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -36,9 +37,8 @@ BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 
 //characteristics we want to track
 //for sensor node 1
-BleCharacteristic temperatureSensorCharacteristic1;
+BleCharacteristic tempAndHumiditySensorCharacteristic;
 BleCharacteristic lightSensorCharacteristic1;
-BleCharacteristic humiditySensorCharacteristic;
 BleCharacteristic distanceSensorCharacteristic;
 
 //for sensor node 2
@@ -52,14 +52,15 @@ const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
 void setup() {
+    const uint8_t val = 0x01;
+    dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
     (void)logHandler; // Does nothing, just to eliminate the unused variable warning
 
     BLE.on();
     
     //map functions to be called whenever new data is received for a characteristic
-    temperatureSensorCharacteristic1.onDataReceived(onTemperatureReceived1, NULL);
+    tempAndHumiditySensorCharacteristic.onDataReceived(onTempAndHumidityReceived, NULL);
     lightSensorCharacteristic1.onDataReceived(onLightReceived1, NULL);
-    humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
     distanceSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
     temperatureSensorCharacteristic2.onDataReceived(onTemperatureReceived2, NULL);
     lightSensorCharacteristic2.onDataReceived(onLightReceived2, NULL);
@@ -97,9 +98,8 @@ void loop() {
                     if(sensorNode1.connected()){
                         Log.info("Successfully connected to sensor node 1!");
                         //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
-                        sensorNode1.getCharacteristicByUUID(temperatureSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
                         sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "ea5248a4-43cc-4198-a4aa-79200a750835");
-                        sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
+                        sensorNode1.getCharacteristicByUUID(tempAndHumiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
                         sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "45be4a56-48f5-483c-8bb1-d3fee433c23c");
                     }
                     else{
@@ -141,15 +141,21 @@ void loop() {
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
-void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Temperature: %u", twoByteValue);
+void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //split the first two bytes into temperature and humidity
+    uint8_t receivedTemp;
+    uint8_t receivedHumidity;
+    
+    memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
+    memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
+    
+    Log.info("Sensor 1 - Temperature: %u", receivedTemp);
+    Log.info("Sensor 1 - Humidity: %u", receivedHumidity);
 }
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Light: %u", twoByteValue);
+    Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
 }
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
@@ -157,9 +163,9 @@ void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Humidity: %u", twoByteValue);
 }
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Distance: %u", twoByteValue);
+    uint8_t byteValue;
+    memcpy(&byteValue, &data[0], sizeof(uint8_t));
+    Log.info("Sensor 1 - Distance: %u cm", byteValue);
 }
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
