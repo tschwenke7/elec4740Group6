@@ -129,12 +129,11 @@ void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDev
     //split the first two bytes into temperature and humidity
     int8_t receivedTemp;
     uint8_t receivedHumidity;
-    
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
 
-    Log.info("Sensor 1 - Temperature: %d", receivedTemp);
-    Log.info("Sensor 1 - Humidity: %u", receivedHumidity);
+    Log.info("Sensor 1 - Temperature: %d degrees Celsius", receivedTemp);
+    Log.info("Sensor 1 - Humidity: %u %%", receivedHumidity);
 }
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
@@ -149,17 +148,17 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     int8_t temperature;
     memcpy(&temperature, &data[0], sizeof(temperature));
-    Log.info("Sensor 2 - Temperature: %d", temperature);
+    Log.info("Sensor 2 - Temperature: %d degrees Celsius", temperature);
 }
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Light: %u", twoByteValue);
+    Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
 }
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Sound: %u", twoByteValue);
+    Log.info("Sensor 2 - Sound: %u dB", twoByteValue);
 }
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t humanSeen;
