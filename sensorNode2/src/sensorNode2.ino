@@ -112,14 +112,34 @@ void loop() {
             lastTemperatureUpdate = currentTime;
             int8_t getValue = readTemperatureAna();
             temperatureSensorCharacteristic.setValue(getValue);
-            // temperatureCloud = getValue;
+
+            //store data in buffer
+            char* transmission[9];
+            memcpy(transmission, &getValue, sizeof(getValue));
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+            //send bluetooth transmission
+            soundSensorCharacteristic.setValue(transmission);
+
+            //log reading
+            temperatureCloud = getValue;
             Log.info("Temperature: %u", getValue);
         }
         //light
         if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
             lastLightUpdate = currentTime;
             uint16_t getValue = readLight();
-            lightSensorCharacteristic.setValue(getValue);
+
+            //store data in buffer
+            char* transmission[10];
+            memcpy(transmission, &getValue, sizeof(getValue));
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+            lightSensorCharacteristic.setValue(transmission);
             lightCloud = getValue;
             Log.info("Light: %u", getValue);
         }
@@ -127,7 +147,18 @@ void loop() {
         if(currentTime - lastSoundUpdate >= SOUND_READ_DELAY){
             lastSoundUpdate = currentTime;
             uint16_t getValue = readSound();
-            soundSensorCharacteristic.setValue(getValue);
+
+            //store data in buffer
+            char* transmission[10];
+            memcpy(transmission, &getValue, sizeof(getValue));
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+            //send bluetooth transmission
+            soundSensorCharacteristic.setValue(transmission);
+
+            //log reading
             soundCloud = getValue;
             Log.info("Sound: %u", getValue);
         }
@@ -139,9 +170,19 @@ void loop() {
             //only send an update if the value has changed since last read,
             //i.e. a human has been detected or lost
             if(getValue != lastHumandDetectorValue){
-                humanDetectorCharacteristic.setValue(getValue);//send the value which was read
-                humanDetectorCloud = getValue;//update cloud variable
+                //store data in buffer
+                char* transmission[9];
+                memcpy(transmission, &getValue, sizeof(getValue));
+                //record and append the sending time
+                uint64_t sendTime = getCurrentTime();
+                memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+                //send bluetooth transmission
+                humanDetectorCharacteristic.setValue(transmission);//send the value which was read
                 lastHumandDetectorValue = getValue;//update seen/unseen state
+
+                //log reading
+                humanDetectorCloud = getValue;//update cloud variable
             }
             Log.info("Human detector: %u", getValue);
         }
@@ -151,6 +192,11 @@ void loop() {
     //    Log.info("not connected yet... ");
     //    delay(500);
     //}
+}
+
+/** Returns the current temperature in microseconds */
+uint64_t getCurrentTime(){
+    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 /* Read the value on the temperature sensor pin 

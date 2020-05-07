@@ -7,6 +7,7 @@
 #include "dct.h"
 #include <HC-SR04.h>
 #include <Grove_Temperature_And_Humidity_Sensor.h>
+#include <chrono>
 /*
  * sensorNode1.ino
  * Description: code to flash to the "sensor node 1" argon for assignment 1
@@ -16,11 +17,12 @@
 
 void setup();
 void loop();
-uint8_t readTemperature();
+uint64_t getCurrentTime();
+int8_t readTemperature();
 uint16_t readLight();
 uint8_t readHumidity();
 uint8_t readDistance();
-#line 12 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 13 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 DHT dht(D0);        //DHT for temperature/humidity 
 
 SYSTEM_MODE(AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
@@ -119,17 +121,21 @@ void loop() {
         if(currentTime - lastTempAndHumidityUpdate >= TEMP_AND_HUMIDITY_READ_DELAY){
             lastTempAndHumidityUpdate = currentTime;
 
-            uint8_t temp = readTemperature();
+            int8_t temp = readTemperature();
             uint8_t humidity = readHumidity();
 
             //update cloud variables if we're doing this
             temperatureCloud = temp;
             humidityCloud = humidity;
 
-            //package the two together in a 2-byte buffer
-            char* transmission[2];
+            //package the two together in a buffer
+            char* transmission[10];
             memcpy(transmission, &temp, sizeof(temp));
             memcpy(transmission + sizeof(temp), &humidity, sizeof(humidity));
+
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(temp) + sizeof(humidity), &sendTime, sizeof(sendTime));
  
             //send bluetooth transmission
             tempAndHumiditySensorCharacteristic.setValue(transmission);
@@ -138,9 +144,18 @@ void loop() {
         if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
             lastLightUpdate = currentTime;
             uint16_t getValue = readLight();
-            lightSensorCharacteristic.setValue(getValue);
             lightCloud = getValue;
             Log.info("Light: " + getValue);
+
+            //store data in buffer
+            char* transmission[10];
+            memcpy(transmission, &getValue, sizeof(getValue));
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+            //send bluetooth transmission
+            lightSensorCharacteristic.setValue(transmission);
         }
         //distance
         if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
@@ -150,7 +165,15 @@ void loop() {
             //if distance remains 0 for multiple cycles, only send first 0 over bluetooth
             //this helps save power
             if(!(getValue == 0 && lastRecordedDistance == 0)){
-                distanceSensorCharacteristic.setValue(getValue);//send distance over bluetooth
+                //store data in buffer
+                char* transmission[9];
+                memcpy(transmission, &getValue, sizeof(getValue));
+                //record and append the sending time
+                uint64_t sendTime = getCurrentTime();
+                memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+                //send bluetooth transmission
+                distanceSensorCharacteristic.setValue(transmission);
                 lastRecordedDistance = getValue;//update last recorded distance
                 Log.info("Distance transmitted.");
             }
@@ -165,12 +188,17 @@ void loop() {
     ///}
 }
 
+/** Returns the current temperature in microseconds */
+uint64_t getCurrentTime(){
+    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 /* Read the value on the temperature sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
-uint8_t readTemperature(){
+int8_t readTemperature(){
     // Read temperature as Celsius
-	uint8_t t = (uint8_t) dht.getTempCelcius();   //Normally returns float
+	int8_t t = (int8_t) dht.getTempCelcius();   //Normally returns float
 	//May be able to change this to 8bit int - check when able.
 	char str[2];
 	sprintf(str, "%u", t);
