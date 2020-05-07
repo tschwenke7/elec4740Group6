@@ -107,7 +107,7 @@ void loop() {
         if(currentTime - lastTempAndHumidityUpdate >= TEMP_AND_HUMIDITY_READ_DELAY){
             lastTempAndHumidityUpdate = currentTime;
 
-            uint8_t temp = readTemperature();
+            int8_t temp = readTemperature();
             uint8_t humidity = readHumidity();
 
             //update cloud variables if we're doing this
@@ -156,9 +156,9 @@ void loop() {
 /* Read the value on the temperature sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
-uint8_t readTemperature(){
+int8_t readTemperature(){
     // Read temperature as Celsius
-	uint8_t t = (uint8_t) dht.getTempCelcius();   //Normally returns float
+	int8_t t = (int8_t) dht.getTempCelcius();   //Normally returns float
 	//May be able to change this to 8bit int - check when able.
 	char str[2];
 	sprintf(str, "%u", t);

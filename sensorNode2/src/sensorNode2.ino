@@ -110,7 +110,7 @@ void loop() {
         //temperature
         if(currentTime - lastTemperatureUpdate >= TEMPERATURE_READ_DELAY){
             lastTemperatureUpdate = currentTime;
-            uint16_t getValue = readTemperatureAna();
+            int8_t getValue = readTemperatureAna();
             temperatureSensorCharacteristic.setValue(getValue);
             // temperatureCloud = getValue;
             Log.info("Temperature: %u", getValue);
@@ -145,6 +145,7 @@ void loop() {
             }
             Log.info("Human detector: %u", getValue);
         }
+        delay(100);
     //}
     //else{
     //    Log.info("not connected yet... ");
@@ -155,9 +156,9 @@ void loop() {
 /* Read the value on the temperature sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
-uint16_t readTemperatureAna(){
+int8_t readTemperatureAna(){
     // Read temperature as Celsius
-	uint16_t t = analogRead(temperaturePin);   //Normally returns float
+	int8_t t = analogRead(temperaturePin);   //Normally returns float
 	char str[2];
 	sprintf(str, "%u", t);
 	Particle.publish("temperatureAna", str, PUBLIC);
