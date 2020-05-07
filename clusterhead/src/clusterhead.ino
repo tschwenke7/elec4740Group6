@@ -126,42 +126,92 @@ void loop() {
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //split the first two bytes into temperature and humidity
     int8_t receivedTemp;
     uint8_t receivedHumidity;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(receivedTemp) + sizeof(receivedHumidity), sizeof(sentTime));
+    uint64_t delay = calculateTransmissionDelay(sentTime);
+
+    //split the first two bytes into temperature and humidity
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
 
     Log.info("Sensor 1 - Temperature: %d degrees Celsius", receivedTemp);
     Log.info("Sensor 1 - Humidity: %u %%", receivedHumidity);
+    Log.info("Temp/humidity transmission delay: %u microseconds", delay);
 }
+
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the light sensor reading
     uint16_t twoByteValue;
+    uint64_t sentTime;
+
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
+    
     Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
+    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
 }
+
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint8_t byteValue;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(byteValue), sizeof(sentTime));
+
     memcpy(&byteValue, &data[0], sizeof(uint8_t));
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
+    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
 }
+
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     int8_t temperature;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(temperature), sizeof(sentTime));
+
     memcpy(&temperature, &data[0], sizeof(temperature));
     Log.info("Sensor 2 - Temperature: %d degrees Celsius", temperature);
+    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
 }
+
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
+
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
+    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
 }
+
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
+
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     Log.info("Sensor 2 - Sound: %u dB", twoByteValue);
+    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
 }
+
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t humanSeen;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(uint8_t), sizeof(sentTime));
+
     memcpy(&humanSeen, &data[0], sizeof(uint8_t));
     Log.info("Sensor 2 - Human detector: %u", humanSeen);
     if(humanSeen == 0x00){
@@ -173,4 +223,9 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
     else{
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
+    Log.info("Transmission delay: %u microseconds", calculateTransmissionDelay(sentTime));
+}
+
+uint64_t calculateTransmissionDelay(uint64_t sentTime){
+    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - sentTime;
 }
