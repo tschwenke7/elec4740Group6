@@ -136,7 +136,7 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Light: %u", twoByteValue);
+    Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
 }
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;

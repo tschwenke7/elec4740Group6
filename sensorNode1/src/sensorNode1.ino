@@ -60,6 +60,7 @@ unsigned long lastDistanceUpdate = 0;//last absolute time a recording was taken
 const char* distanceSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
 BleCharacteristic distanceSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, distanceSensorUuid, sensorNode1ServiceUuid);
+uint8_t lastRecordedDistance = 255;
 
 
 /*debug variables */
@@ -142,10 +143,18 @@ void loop() {
         if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
             lastDistanceUpdate = currentTime;
             uint8_t getValue = readDistance();
-            distanceSensorCharacteristic.setValue(getValue);
+
+            //if distance remains 0 for multiple cycles, only send first 0 over bluetooth
+            //this helps save power
+            if(!(getValue == 0 && lastRecordedDistance == 0)){
+                distanceSensorCharacteristic.setValue(getValue);//send distance over bluetooth
+                lastRecordedDistance = getValue;//update last recorded distance
+                Log.info("Distance transmitted.");
+            }
             distanceCloud = getValue;
             Log.info("Distance: " + getValue);
         }
+        
         delay(100);
     //}
     //else{
