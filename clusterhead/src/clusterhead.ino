@@ -139,8 +139,17 @@ void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDev
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
 
+    //print full buffer
+    char byteX;
+    Log.info("@@@@Temp/humidity buffer contains:");
+    for(int i = 0; i < 10; i++){
+        memcpy(&byteX, &data[i], sizeof(byteX));
+        Log.info("Byte %d : %x",i,byteX);
+    }
+
     Log.info("Sensor 1 - Temperature: %d degrees Celsius", receivedTemp);
     Log.info("Sensor 1 - Humidity: %u %%", receivedHumidity);
+    
     // Log.info("Temp/humidity transmission delay: %llu seconds", delay);
 }
 

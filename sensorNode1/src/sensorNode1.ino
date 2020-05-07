@@ -41,8 +41,8 @@ BleCharacteristic lightSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 
 /* Distance sensor variables */
-const int distanceTriggerPin = D3;  //pin reading input of sensor
-const int distanceEchoPin = D2;     //pin reading output of sensor
+const int distanceTriggerPin = D2;  //pin reading input of sensor
+const int distanceEchoPin = D3;     //pin reading output of sensor
 HC_SR04 rangefinder = HC_SR04(distanceTriggerPin, distanceEchoPin);
 //duration in millis to wait between reads
 const uint16_t DISTANCE_READ_DELAY = 5000;
@@ -120,10 +120,16 @@ void loop() {
             memcpy(transmission, &temp, sizeof(temp));
             memcpy(transmission + sizeof(temp), &humidity, sizeof(humidity));
 
+
             //record and append the sending time
             uint64_t sendTime = getCurrentTime();
             memcpy(transmission + sizeof(temp) + sizeof(humidity), &sendTime, sizeof(sendTime));
- 
+            
+            //test unpacking again for humidity
+            uint8_t testHumidity;
+            memcpy(&testHumidity, transmission + sizeof(temp), sizeof(testHumidity));
+            Log.info("Test unpacking humidity before sending: %x %%", testHumidity);
+
             //send bluetooth transmission
             tempAndHumiditySensorCharacteristic.setValue(transmission);
         }
