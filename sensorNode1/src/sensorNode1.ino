@@ -1,3 +1,9 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <HC-SR04.h>
+
+// This #include statement was automatically added by the Particle IDE.
+#include <Grove_Temperature_And_Humidity_Sensor.h>
+
 #include "Particle.h"
 #include "dct.h"
 #include <HC-SR04.h>
@@ -20,15 +26,25 @@ SerialLogHandler logHandler(LOG_LEVEL_TRACE);
    with 4 characteristics for each of its 4 sensors */
 const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 
-/*Temperature and humidity sensor variables */
+
+/*Temperature sensor variables */
+//duration in millis to wait between reads
+const uint16_t TEMPERATURE_READ_DELAY = 5000;
+unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
+//advertised bluetooth characteristic
+const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
+BleCharacteristic temperatureSensorCharacteristic("temp",
+BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
+
+/*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t TEMP_AND_HUMIDITY_READ_DELAY = 5000;
-unsigned long lastTempAndHumidityUpdate = 0;//last absolute time a recording was taken
+const uint16_t HUMIDITY_READ_DELAY = 5000;
+unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
-const char* tempAndHumiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
-BleCharacteristic tempAndHumiditySensorCharacteristic("tempAndHumid",
-BleCharacteristicProperty::NOTIFY, tempAndHumiditySensorUuid, sensorNode1ServiceUuid);
+const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
+BleCharacteristic humiditySensorCharacteristic("humid",
+BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
 
 /* Light sensor variables */
 const int lightPin = A1; //pin reading output of sensor
@@ -37,7 +53,7 @@ const uint16_t LIGHT_READ_DELAY = 5000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
-BleCharacteristic lightSensorCharacteristic("temp",
+BleCharacteristic lightSensorCharacteristic("light",
 BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 
 /* Distance sensor variables */
@@ -49,7 +65,7 @@ const uint16_t DISTANCE_READ_DELAY = 5000;
 unsigned long lastDistanceUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* distanceSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
-BleCharacteristic distanceSensorCharacteristic("temp",
+BleCharacteristic distanceSensorCharacteristic("distance",
 BleCharacteristicProperty::NOTIFY, distanceSensorUuid, sensorNode1ServiceUuid);
 uint8_t lastRecordedDistance = 255;
 
@@ -80,7 +96,8 @@ void setup() {
     BLE.on();//activate BT
 
     //add characteristics
-    BLE.addCharacteristic(tempAndHumiditySensorCharacteristic);
+    BLE.addCharacteristic(temperatureSensorCharacteristic);
+    BLE.addCharacteristic(humiditySensorCharacteristic);
     BLE.addCharacteristic(lightSensorCharacteristic);
     BLE.addCharacteristic(distanceSensorCharacteristic);
 
@@ -105,33 +122,36 @@ void loop() {
            A change in the characteristic will notify the connected cluster head
         */
         //temperature and humidity
-        if(currentTime - lastTempAndHumidityUpdate >= TEMP_AND_HUMIDITY_READ_DELAY){
-            lastTempAndHumidityUpdate = currentTime;
-
+        if(currentTime - lastTemperatureUpdate >= TEMPERATURE_READ_DELAY){
+            //reset read delay timer
+            lastTemperatureUpdate = currentTime;
+            //read temp
             int8_t temp = readTemperature();
-            uint8_t humidity = readHumidity();
-
+            
             //update cloud variables if we're doing this
             temperatureCloud = temp;
-            humidityCloud = humidity;
 
-            //package the two together in a buffer
-            char* transmission[10];
+            //package together with send time in a buffer
+            uint8_t* transmission[9];
             memcpy(transmission, &temp, sizeof(temp));
-            memcpy(transmission + sizeof(temp), &humidity, sizeof(humidity));
-
 
             //record and append the sending time
             uint64_t sendTime = getCurrentTime();
-            memcpy(transmission + sizeof(temp) + sizeof(humidity), &sendTime, sizeof(sendTime));
-            
-            //test unpacking again for humidity
-            uint8_t testHumidity;
-            memcpy(&testHumidity, transmission + sizeof(temp), sizeof(testHumidity));
-            Log.info("Test unpacking humidity before sending: %x %%", testHumidity);
+            memcpy(transmission + sizeof(temp), &sendTime, sizeof(sendTime));
 
             //send bluetooth transmission
-            tempAndHumiditySensorCharacteristic.setValue(transmission);
+            temperatureSensorCharacteristic.setValue(transmission);
+        }
+        //humidity
+        if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
+           lastHumidityUpdate = currentTime;
+           uint8_t humidity = readHumidity();
+           
+           //update cloud variables if we're doing this
+           humidityCloud = humidity;
+           
+           //send bluetooth transmission
+           humiditySensorCharacteristic.setValue(humidity);
         }
         //light
         if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
@@ -141,7 +161,7 @@ void loop() {
             Log.info("Light: " + getValue);
 
             //store data in buffer
-            char* transmission[10];
+            uint8_t* transmission[10];
             memcpy(transmission, &getValue, sizeof(getValue));
             //record and append the sending time
             uint64_t sendTime = getCurrentTime();
@@ -159,7 +179,7 @@ void loop() {
             //this helps save power
             if(!(getValue == 0 && lastRecordedDistance == 0)){
                 //store data in buffer
-                char* transmission[9];
+                uint8_t* transmission[9];
                 memcpy(transmission, &getValue, sizeof(getValue));
                 //record and append the sending time
                 uint64_t sendTime = getCurrentTime();
@@ -210,7 +230,9 @@ uint16_t readLight(){
 	char str[2];
 	sprintf(str, "%u", getL);
 	Particle.publish("light", str, PUBLIC);
-    return getL;
+    
+	uint16_t getLasLux =  (uint16_t) (getL - 1382.758621)/3.793103448;
+    return getLasLux;
 }
 
 /* Read the value on the humidity sensor pin 

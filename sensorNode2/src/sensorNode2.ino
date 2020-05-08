@@ -113,7 +113,7 @@ void loop() {
             temperatureSensorCharacteristic.setValue(getValue);
 
             //store data in buffer
-            char* transmission[9];
+            uint8_t* transmission[9];
             memcpy(transmission, &getValue, sizeof(getValue));
             //record and append the sending time
             uint64_t sendTime = getCurrentTime();
@@ -132,7 +132,7 @@ void loop() {
             uint16_t getValue = readLight();
 
             //store data in buffer
-            char* transmission[10];
+            uint8_t* transmission[10];
             memcpy(transmission, &getValue, sizeof(getValue));
             //record and append the sending time
             uint64_t sendTime = getCurrentTime();
@@ -148,7 +148,7 @@ void loop() {
             uint16_t getValue = readSound();
 
             //store data in buffer
-            char* transmission[10];
+            uint8_t* transmission[10];
             memcpy(transmission, &getValue, sizeof(getValue));
             //record and append the sending time
             uint64_t sendTime = getCurrentTime();
@@ -170,7 +170,7 @@ void loop() {
             //i.e. a human has been detected or lost
             if(getValue != lastHumandDetectorValue){
                 //store data in buffer
-                char* transmission[9];
+                uint8_t* transmission[9];
                 memcpy(transmission, &getValue, sizeof(getValue));
                 //record and append the sending time
                 uint64_t sendTime = getCurrentTime();
@@ -209,7 +209,8 @@ int8_t readTemperatureAna(){
 	sprintf(str, "%u", t);
 	Particle.publish("temperatureAna", str, PUBLIC);
 	
-	return t;
+	int8_t degC = (int8_t) t*0.8 - 273;
+	return degC;
 }
 
 /* Read the value on the light sensor pin 
@@ -221,7 +222,9 @@ uint16_t readLight(){
 	char str[2];
 	sprintf(str, "%u", getL);
 	Particle.publish("light", str, PUBLIC);
-    return getL;
+    
+	uint16_t getLasLux =  (uint16_t) (getL - 1382.758621)/3.793103448;
+    return getLasLux;
 }
 
 /* Read the value on the sound sensor pin 
