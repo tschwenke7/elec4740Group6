@@ -22,7 +22,8 @@ BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 
 //characteristics we want to track
 //for sensor node 1
-BleCharacteristic tempAndHumiditySensorCharacteristic;
+BleCharacteristic temperatureSensorCharacteristic1;
+BleCharacteristic humiditySensorCharacteristic;
 BleCharacteristic lightSensorCharacteristic1;
 BleCharacteristic distanceSensorCharacteristic;
 
@@ -44,7 +45,8 @@ void setup() {
     BLE.on();
     
     //map functions to be called whenever new data is received for a characteristic
-    tempAndHumiditySensorCharacteristic.onDataReceived(onTempAndHumidityReceived, NULL);
+    temperatureSensorCharacteristic1.onDataReceived(onTemperatureReceived1, NULL);
+    humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
     lightSensorCharacteristic1.onDataReceived(onLightReceived1, NULL);
     distanceSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
     temperatureSensorCharacteristic2.onDataReceived(onTemperatureReceived2, NULL);
@@ -84,7 +86,8 @@ void loop() {
                         Log.info("Successfully connected to sensor node 1!");
                         //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
                         sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "ea5248a4-43cc-4198-a4aa-79200a750835");
-                        sensorNode1.getCharacteristicByUUID(tempAndHumiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
+                        sensorNode1.getCharacteristicByUUID(temperatureSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
                         sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "45be4a56-48f5-483c-8bb1-d3fee433c23c");
                     }
                     else{
@@ -126,31 +129,24 @@ void loop() {
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
-void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+
+void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     int8_t receivedTemp;
-    uint8_t receivedHumidity;
     uint64_t sentTime;
 
     //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(receivedTemp) + sizeof(receivedHumidity), sizeof(sentTime));
-    uint64_t delay = calculateTransmissionDelay(sentTime);
-
-    //split the first two bytes into temperature and humidity
+    memcpy(&sentTime, &data[0] + sizeof(receivedTemp), sizeof(sentTime));
+    //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
-    memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
-
-    //print full buffer
-    char byteX;
-    Log.info("@@@@Temp/humidity buffer contains:");
-    for(int i = 0; i < 10; i++){
-        memcpy(&byteX, &data[i], sizeof(byteX));
-        Log.info("Byte %d : %x",i,byteX);
-    }
-
-    Log.info("Sensor 1 - Temperature: %d degrees Celsius", receivedTemp);
-    Log.info("Sensor 1 - Humidity: %u %%", receivedHumidity);
     
-    // Log.info("Temp/humidity transmission delay: %llu seconds", delay);
+    Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
+    // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
+}
+
+void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    uint8_t receivedHumidity;
+    memcpy(&receivedHumidity, &data[0], sizeof(receivedHumidity));
+    Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
 }
 
 void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){

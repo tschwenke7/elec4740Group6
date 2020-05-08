@@ -100,7 +100,7 @@ void setup() {
 
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
-    //if(BLE.connected()){
+    if(BLE.connected()){
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
@@ -186,11 +186,11 @@ void loop() {
             Log.info("Human detector: %u", getValue);
         }
         delay(100);
-    //}
-    //else{
-    //    Log.info("not connected yet... ");
-    //    delay(500);
-    //}
+    }
+    else{
+        Log.info("not connected yet... ");
+        delay(500);
+    }
 }
 
 /** Returns the current temperature in microseconds */
