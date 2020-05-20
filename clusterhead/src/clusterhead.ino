@@ -15,7 +15,7 @@ SYSTEM_MODE(AUTOMATIC);
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 /* Data tracking variables */
-
+int currentSound
 /* Alarm variables */
 
 //The active status of each of the 4 possible alarm conditions. True if active, false if inactive
@@ -163,9 +163,103 @@ void loop() {
 
 /* Functions to control the functionality of clusterhead actuators */
 
-/* Alarm triggered by 
-void startAlarm1(){
-    //Blue LED flashing, 0.5 Hz frequency
+/* Alarms */
+/* checks if the current conditions meet those required for the specified alarm.
+    alarmNumber can be 0 - 3, corresponding to the 4 different alarms. 
+ */
+boolean alarmCondtitionsMet(int alarmNumber){
+    //TODO - add variables so that we can check if these conditions are currently met.
+    switch(alarmNumber){
+        case 0:
+            //Object movement detected within 0.25 meter
+            return if(1 == 1);
+            break;
+        case 1:
+            //Sound Level 55-70 dBA, light level <100 lux and noise last for more than 30 sec
+            return if(1 == 1);
+            break;
+        case 2:
+            //Sound level > 70 dBA, light level < 100 lux and noise last for more than 10 sec
+            return if(1 == 1);
+            break;
+        case 3:
+            //Sound level > 80 dBA
+            return if(1 == 1);
+            break;
+        default:
+            Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'alarmConditionsMet' function. Expected value from 0 - 3, got %d", alarmNumber);
+            break;
+    }
+    
+}
+
+/* Activates the specified alarm.
+    alarmNumber can be 0 - 3, corresponding to the 4 different alarms. 
+ */
+void startAlarm(int alarmNumber){
+    //check that alarmNumber is valid index
+    if(alarmNumber >=0 && alarmNumber <= 3){
+        //record the time this alarm was activated
+        alarmActivatedTimes[alarmNumber] = Time.now();
+
+        //TODO - activate the appropriate light
+        switch(alarmNumber){
+            case 0:
+                //Blue LED flashing, 0.5 Hz frequency
+                break;
+            case 1:
+                //Blue LED flashing, 2 Hz 
+                break;
+            case 2:
+                //Red LED flashing, 1 Hz
+                break;
+            case 3:
+                //Red LED flashing, 2 Hz
+                break;
+        }
+    }
+    else{
+        Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'startAlarm' function. Expected value from 0 - 3, got %d", alarmNumber);
+    }
+
+    
+}
+
+/* Resets/deactivates the specified alarm.
+    alarmNumber can be 0 - 3, corresponding to the 4 different alarms. 
+ */
+void resetAlarm(int alarmNumber){
+    //check that alarmNumber is valid index
+    if(alarmNumber >=0 && alarmNumber <= 3){
+        uint8_t alarmSensorNodeId = 2; //the sensor node which the alarm originated from
+        //record the time elapsed
+        int eventDuration = Time.now() - alarmActivatedTimes[alarmNumber];
+        //TODO - convert alarmActivatedTimes[alarmNumber] to printable local date/time
+
+        //TODO - deactivate the appropriate light
+        switch(alarmNumber){
+            case 0:
+                //Blue LED flashing, 0.5 Hz frequency
+                alarmSensorNodeId = 1;
+                break;
+            case 1:
+                //Blue LED flashing, 2 Hz 
+                break;
+            case 2:
+                //Red LED flashing, 1 Hz
+                break;
+            case 3:
+                //Red LED flashing, 2 Hz
+                break;
+        }
+
+        //log event information
+        Log.info("Alarm %d triggered by Sensor Node %u at [converted date/time here]. Duration: %d seconds",
+            alarmNumber, alarmSensorNodeId, eventDuration);
+    }
+    else{
+        Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'resetAlarm' function. Expected value from 0 - 3, got %d", alarmNumber);
+    }
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
@@ -272,9 +366,4 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
-}
-
-uint64_t calculateTransmissionDelay(uint64_t sentTime){
-    return Time.now() - sentTime;
-    // return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - sentTime;
 }
