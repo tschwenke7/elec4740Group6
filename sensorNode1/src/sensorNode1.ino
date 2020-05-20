@@ -180,8 +180,13 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
     memcpy(&fanSpeed, &data[0], sizeof(uint16_t));
 
     Log.info("The fan power has been set via BT to %u", fanSpeed);
-    //set the PWM output to the fan
-    analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
+    if(fanSpeed < 4095){
+        //set the PWM output to the fan
+        analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
+    }
+    else{
+        Log.info("Invalid fan power - should be less than 4095.");
+    }    
 }
 
 /** Returns the current temperature in microseconds */
@@ -226,7 +231,7 @@ uint16_t readCurrent(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", 0);
-	Particle.publish("distance (not currently implemented)", str, PUBLIC);
+	Particle.publish("Current (not currently implemented)", str, PUBLIC);
 
     Log.info("Read current (not currently implemented): %u", 0);
     return 0;

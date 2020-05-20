@@ -5,9 +5,9 @@
 
 /*
  * sensorNode2.ino
- * Description: code to flash to the "sensor node 2" argon for assignment 1
+ * Description: code to flash to the "sensor node 2" argon for assignment 2
  * Author: Tom Schwenke, Edward Ingle
- * Date: 07/05/2020
+ * Date: 20/05/2020
  */
 
 SYSTEM_MODE(AUTOMATIC);     //In automatic mode so it can connect to cloud
@@ -15,7 +15,7 @@ SYSTEM_MODE(AUTOMATIC);     //In automatic mode so it can connect to cloud
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 /* Service UUID for sensor node 1. It is advertised as one service, 
-   with 4 characteristics for each of its 4 sensors */
+   with 6 characteristics for each of its 5 sensors and 1 actuator */
 const char* sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 
 
@@ -60,6 +60,23 @@ BleCharacteristic humanDetectorCharacteristic("pir",
 BleCharacteristicProperty::NOTIFY, humanDetectorUuid, sensorNode2ServiceUuid);
 uint8_t lastHumandDetectorValue = 0;
 
+/* Current sensor characteristic */
+const int currentSensorPin = -1; //TODO: update this
+const uint16_t CURRENT_READ_DELAY = 5000;//time between sampling current
+unsigned long lastCurrentUpdate = 0;
+//advertised bluetooth characteristic
+const char* currentSensorUuid("2822a610-32d6-45e1-b9fb-247138fc8df7");
+BleCharacteristic currentSensorCharacteristic("current",
+BleCharacteristicProperty::NOTIFY, currentSensorUuid, sensorNode2ServiceUuid);
+
+/* LED actuator characteristic */
+const int ledPin = -1; //TODO: update this
+const uint ledHz= 50;
+//advertised bluetooth characteristic
+const char* ledVoltageUuid("97017674-9615-4fba-9712-6829f2045836");
+BleCharacteristic ledVoltageCharacteristic("ledVoltage",
+BleCharacteristicProperty::WRITE_WO_RSP, ledVoltageUuid, sensorNode2ServiceUuid, onDataReceived);
+
 /*debug variables */
 double temperatureCloud = 0;
 double lightCloud = 0;
@@ -86,6 +103,8 @@ void setup() {
     BLE.addCharacteristic(lightSensorCharacteristic);
     BLE.addCharacteristic(soundSensorCharacteristic);
     BLE.addCharacteristic(humanDetectorCharacteristic);
+    BLE.addCharacteristic(currentSensorCharacteristic);
+    BLE.addCharacteristic(ledVoltageCharacteristic);
 
     //data to be advertised
     BleAdvertisingData advData;
@@ -95,7 +114,9 @@ void setup() {
     Log.info("Start advertising");
     BLE.advertise(&advData);
 
-    pinMode(humanDetectorPin,INPUT);    
+    //configure pins for input/output
+    pinMode(humanDetectorPin, INPUT);
+    pinMode(ledPin, OUTPUT);
 }
 
 void loop() {
@@ -185,11 +206,38 @@ void loop() {
             }
             Log.info("Human detector: %u", getValue);
         }
+        //current
+        if(currentTime - lastCurrentUpdate >= CURRENT_READ_DELAY){
+           lastCurrentUpdate = currentTime;
+           uint16_t current = readCurrent();
+
+           //send bluetooth transmission
+           currentSensorCharacteristic.setValue(current);
+        }
+
         delay(100);
     }
     else{
         Log.info("not connected yet... ");
         delay(500);
+    }
+}
+
+/** Function called whenver a value for ledVoltageCharacteristic is received via bluetooth.
+ *  Updates the voltage supplied to the LED actuator to the received value */
+void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the 2-byte value to set the fan pin adc to
+    uint16_t ledVoltage;
+    memcpy(&ledVoltage, &data[0], sizeof(uint16_t));
+
+    Log.info("The LED voltage has been set via BT to %u", ledVoltage);
+
+    if(ledVoltage < 4095){
+        //set the PWM output to the LED
+        analogWrite(ledPin, ledVoltage, ledHz);
+    }
+    else{
+        Log.info("Invalid LED voltage - should be less than 4095.");
     }
 }
 
@@ -203,13 +251,18 @@ uint64_t getCurrentTime(){
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
 int8_t readTemperatureAna(){
-    // Read temperature as Celsius
-	int8_t t = analogRead(temperaturePin);   //Normally returns float
+    // Read temperature pin
+	uint16_t t = analogRead(temperaturePin);
+
+    //cloud debug stuff - can delete after testing
 	char str[2];
 	sprintf(str, "%u", t);
 	Particle.publish("temperatureAna", str, PUBLIC);
 	
+    //convert pin value to celsius
 	int8_t degC = (int8_t) t*0.08 - 273;
+    Log.info("Read temperature: %d degrees celsius", degC);
+
 	return degC;
 }
 
@@ -219,12 +272,16 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 uint16_t readLight(){
     //do any transformation logic we might want
     uint16_t getL = analogRead(lightPin);
+
+    //cloud debug stuff - can delete after testing
 	char str[2];
 	sprintf(str, "%u", getL);
 	Particle.publish("light", str, PUBLIC);
     
-	uint16_t getLasLux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
-    return getLasLux;
+    //convert to lux
+	uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
+    Log.info("Read light: %u lux", lux);
+    return lux;
 }
 
 /* Read the value on the sound sensor pin 
@@ -232,6 +289,10 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
 uint16_t readSound(){
     uint16_t getS = analogRead(soundPin);
+
+    Log.info("Read sound: %u", getS);
+
+    //cloud debug stuff - can delete after testing
 	char str[2];
 	sprintf(str, "%u", getS);
 	Particle.publish("sound", str, PUBLIC);
@@ -242,8 +303,27 @@ uint16_t readSound(){
 /* Reads the PIR sensor. Returns 1 if signal is HIGH, 0 if LOW */
 uint8_t readHumanDetector(){
     byte state = digitalRead(humanDetectorPin);
+
+    Log.info("Read PIR: %u", state);
+
+    //cloud debug stuff - can delete after testing
 	char str[1];
 	sprintf(str, "%u", state);
 	Particle.publish("humanDetector", str, PUBLIC);
+
     return (uint8_t) state;
+}
+
+/* Read the value on the current sensor pin */
+uint16_t readCurrent(){
+    //TODO: work out how to actually read this
+    uint16_t current = 0;
+
+    //cloud data - can delete when not testing
+    char str[2];
+    sprintf(str, "%u", current);
+	Particle.publish("Current (not currently implemented)", str, PUBLIC);
+
+    Log.info("Read current (not currently implemented): %u", current);
+    return current;
 }
