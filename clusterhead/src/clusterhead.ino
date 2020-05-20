@@ -197,6 +197,8 @@ boolean alarmCondtitionsMet(int alarmNumber){
     alarmNumber can be 0 - 3, corresponding to the 4 different alarms. 
  */
 void startAlarm(int alarmNumber){
+    //which node triggered this alarm?
+    uint8_t alarmSourceSensorNodeId = 2;
     //check that alarmNumber is valid index
     if(alarmNumber >=0 && alarmNumber <= 3){
         //record the time this alarm was activated
@@ -206,6 +208,7 @@ void startAlarm(int alarmNumber){
         switch(alarmNumber){
             case 0:
                 //Blue LED flashing, 0.5 Hz frequency
+                alarmSourceSensorNodeId = 1;
                 break;
             case 1:
                 //Blue LED flashing, 2 Hz 
@@ -218,6 +221,10 @@ void startAlarm(int alarmNumber){
                 break;
         }
     }
+
+    //TODO - update LCD - "alarm at sensor node 1|2"
+    Log.info("Activating alarm %d", alarmNumber);
+
     else{
         Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'startAlarm' function. Expected value from 0 - 3, got %d", alarmNumber);
     }
