@@ -24,7 +24,7 @@ const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 
 /*Temperature sensor variables */
 //duration in millis to wait between reads
-const uint16_t TEMPERATURE_READ_DELAY = 5000;
+const uint16_t TEMPERATURE_READ_DELAY = 30000;
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
@@ -34,7 +34,7 @@ BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t HUMIDITY_READ_DELAY = 5000;
+const uint16_t HUMIDITY_READ_DELAY = 30000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
@@ -56,7 +56,7 @@ const int distanceTriggerPin = D2;  //pin reading input of sensor
 const int distanceEchoPin = D3;     //pin reading output of sensor
 HC_SR04 rangefinder = HC_SR04(distanceTriggerPin, distanceEchoPin);
 //duration in millis to wait between reads
-const uint16_t DISTANCE_READ_DELAY = 5000;
+const uint16_t DISTANCE_READ_DELAY = 1000;
 unsigned long lastDistanceUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* distanceSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");

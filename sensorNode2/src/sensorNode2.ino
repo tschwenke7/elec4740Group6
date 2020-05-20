@@ -22,7 +22,7 @@ const char* sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 /*Temperature sensor variables */
 const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t TEMPERATURE_READ_DELAY = 2000;
+const uint16_t TEMPERATURE_READ_DELAY = 30000;
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
@@ -32,7 +32,7 @@ BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode2ServiceUuid
 /* Light sensor variables */
 const int lightPin = A5; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t LIGHT_READ_DELAY = 2000;
+const uint16_t LIGHT_READ_DELAY = 5000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
@@ -42,7 +42,7 @@ BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode2ServiceUuid);
 /* Sound sensor variables */
 const int soundPin = A4;//A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t SOUND_READ_DELAY = 2000;
+const uint16_t SOUND_READ_DELAY = 5000;
 unsigned long lastSoundUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* soundSensorUuid("88ba2f5d-1e98-49af-8697-d0516df03be9");
@@ -209,7 +209,7 @@ int8_t readTemperatureAna(){
 	sprintf(str, "%u", t);
 	Particle.publish("temperatureAna", str, PUBLIC);
 	
-	int8_t degC = (int8_t) t*0.8 - 273;
+	int8_t degC = (int8_t) t*0.08 - 273;
 	return degC;
 }
 
@@ -223,7 +223,7 @@ uint16_t readLight(){
 	sprintf(str, "%u", getL);
 	Particle.publish("light", str, PUBLIC);
     
-	uint16_t getLasLux =  (uint16_t) (getL - 1382.758621)/3.793103448;
+	uint16_t getLasLux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
     return getLasLux;
 }
 
@@ -235,6 +235,7 @@ uint16_t readSound(){
 	char str[2];
 	sprintf(str, "%u", getS);
 	Particle.publish("sound", str, PUBLIC);
+	
     return getS;
 }
 
