@@ -5,26 +5,29 @@
 #line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
+#include <chrono>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
  * Author: Tom Schwenke
- * Date: 15/04/2020
+ * Date: 07/05/2020
  */
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
 void setup();
 void loop();
-void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
+void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
+void onCurrentReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
+void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 12 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+uint64_t calculateTransmissionDelay(uint64_t sentTime);
+#line 13 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -37,15 +40,19 @@ BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 
 //characteristics we want to track
 //for sensor node 1
-BleCharacteristic tempAndHumiditySensorCharacteristic;
-BleCharacteristic lightSensorCharacteristic1;
+BleCharacteristic temperatureSensorCharacteristic1;
+BleCharacteristic humiditySensorCharacteristic;
 BleCharacteristic distanceSensorCharacteristic;
+BleCharacteristic currentSensorCharacteristic1;
+BleCharacteristic fanSpeedCharacteristic;
 
 //for sensor node 2
 BleCharacteristic temperatureSensorCharacteristic2;
 BleCharacteristic lightSensorCharacteristic2;
 BleCharacteristic soundSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
+BleCharacteristic currentSensorCharacteristic2;
+BleCharacteristic ledVoltageCharacteristic;
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
@@ -59,13 +66,16 @@ void setup() {
     BLE.on();
     
     //map functions to be called whenever new data is received for a characteristic
-    tempAndHumiditySensorCharacteristic.onDataReceived(onTempAndHumidityReceived, NULL);
-    lightSensorCharacteristic1.onDataReceived(onLightReceived1, NULL);
+    temperatureSensorCharacteristic1.onDataReceived(onTemperatureReceived1, NULL);
+    humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
     distanceSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
+    currentSensorCharacteristic1.onDataReceived(onCurrentReceived1, NULL);
+
     temperatureSensorCharacteristic2.onDataReceived(onTemperatureReceived2, NULL);
     lightSensorCharacteristic2.onDataReceived(onLightReceived2, NULL);
     soundSensorCharacteristic.onDataReceived(onSoundReceived, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
+    currentSensorCharacteristic2.onDataReceived(onCurrentReceived2, NULL);
 }
 
 void loop() { 
@@ -98,9 +108,11 @@ void loop() {
                     if(sensorNode1.connected()){
                         Log.info("Successfully connected to sensor node 1!");
                         //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
-                        sensorNode1.getCharacteristicByUUID(lightSensorCharacteristic1, "ea5248a4-43cc-4198-a4aa-79200a750835");
-                        sensorNode1.getCharacteristicByUUID(tempAndHumiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
+                        sensorNode1.getCharacteristicByUUID(temperatureSensorCharacteristic1, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode1.getCharacteristicByUUID(humiditySensorCharacteristic, "99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
                         sensorNode1.getCharacteristicByUUID(distanceSensorCharacteristic, "45be4a56-48f5-483c-8bb1-d3fee433c23c");
+                        sensorNode1.getCharacteristicByUUID(currentSensorCharacteristic1, "2822a610-32d6-45e1-b9fb-247138fc8df7");
+                        sensorNode1.getCharacteristicByUUID(fanSpeedCharacteristic, "29fba3f5-4ce8-46bc-8d75-77806db22c31");
                     }
                     else{
                         Log.info("Failed to connect to sensor node 1.");
@@ -123,6 +135,9 @@ void loop() {
                         sensorNode2.getCharacteristicByUUID(lightSensorCharacteristic2, "ea5248a4-43cc-4198-a4aa-79200a750835");
                         sensorNode2.getCharacteristicByUUID(soundSensorCharacteristic, "88ba2f5d-1e98-49af-8697-d0516df03be9");
                         sensorNode2.getCharacteristicByUUID(humanDetectorCharacteristic, "b482d551-c3ae-4dde-b125-ce244d7896b0");
+                        sensorNode2.getCharacteristicByUUID(currentSensorCharacteristic2, "2822a610-32d6-45e1-b9fb-247138fc8df7");
+                        sensorNode2.getCharacteristicByUUID(ledVoltageCharacteristic, "97017674-9615-4fba-9712-6829f2045836");
+
                     }
                     else{
                         Log.info("Failed to connect to sensor node 2.");
@@ -141,49 +156,97 @@ void loop() {
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
-void onTempAndHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //split the first two bytes into temperature and humidity
-    uint8_t receivedTemp;
-    uint8_t receivedHumidity;
-    
+
+void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    int8_t receivedTemp;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(receivedTemp), sizeof(sentTime));
+    //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
-    memcpy(&receivedHumidity, &data[0] + sizeof(receivedTemp), sizeof(receivedHumidity));
     
-    Log.info("Sensor 1 - Temperature: %u", receivedTemp);
-    Log.info("Sensor 1 - Humidity: %u", receivedHumidity);
+    Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
+    // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
-void onLightReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
-}
+
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    uint8_t receivedHumidity;
+    memcpy(&receivedHumidity, &data[0], sizeof(receivedHumidity));
+    Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
+}
+
+void onCurrentReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the current sensor reading
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 1 - Humidity: %u", twoByteValue);
+    
+    Log.info("Sensor 1 - Current: %u Amps", twoByteValue);
 }
+
+void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the current sensor reading
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    
+    Log.info("Sensor 2 - Current: %u Amps", twoByteValue);
+}
+
 void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint8_t byteValue;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(byteValue), sizeof(sentTime));
+
     memcpy(&byteValue, &data[0], sizeof(uint8_t));
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
+
 void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Temperature: %u", twoByteValue);
+    int8_t temperature;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(temperature), sizeof(sentTime));
+
+    memcpy(&temperature, &data[0], sizeof(temperature));
+    Log.info("Sensor 2 - Temperature: %d degrees Celsius", temperature);
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
+
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
+
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Light: %u", twoByteValue);
+    Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
+
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
+
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Sound: %u", twoByteValue);
+    Log.info("Sensor 2 - Sound: %u dB", twoByteValue);
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
+
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint16_t humanSeen;
+    uint8_t humanSeen;
+    uint64_t sentTime;
+
+    //read the time of sending, to calculate transmission delay
+    memcpy(&sentTime, &data[0] + sizeof(uint8_t), sizeof(sentTime));
+
     memcpy(&humanSeen, &data[0], sizeof(uint8_t));
     Log.info("Sensor 2 - Human detector: %u", humanSeen);
     if(humanSeen == 0x00){
@@ -195,4 +258,10 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
     else{
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
+    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
+}
+
+uint64_t calculateTransmissionDelay(uint64_t sentTime){
+    return Time.now() - sentTime;
+    // return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - sentTime;
 }
