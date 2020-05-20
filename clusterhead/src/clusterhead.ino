@@ -14,8 +14,32 @@ SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
+/* Data tracking variables */
+
+/* Alarm variables */
+
+//The active status of each of the 4 possible alarm conditions. True if active, false if inactive
+boolean alarmActive [4] = {false, false, false, false};
+/* The absolute time in seconds each of the 4 alarms was activated.*/
+long long alarmActivatedTimes[4] = {0,0,0,0};
+//after this number of seconds without another alarm-worthy event, the alarm will automatically reset.
+const uint8_t ALARM_COOLOFF_DELAY;
+//number of seconds since each alarm stopped being triggered. If one reaches ALARM_COOLOFF_DELAY, reset that alarm
+uint8_t alarmCooloffCounters [4] = {0, 0, 0, 0};
+
+//alarm 1 will be triggered if an object is detected within this many centimetres
+const int DISTANCE_THRESHOLD = 25;
+//light must go below this value of Lux to trigger alarms 2 or 3
+const int LIGHT_THRESHOLD = 100;
+//no alarm below t0, alarm 2 may trigger between t0-t1, alarm 3 between t1-t2, alarm 4 if > t2
+const int SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
+//sound must continue for t0 seconds to trigger alarm 2, or t1 seconds for alarm 3
+const int SOUND_DURATION_THRESHOLDS [2] = {30, 10};
+
+
+/* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
-BlePeerDevice sensorNode1; //"754ebf5e-ce31-4300-9fd5-a8fb4ee4a811"
+BlePeerDevice sensorNode1;
 BlePeerDevice sensorNode2;
 BleUuid sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
@@ -63,7 +87,7 @@ void setup() {
 void loop() { 
     //do stuff if both sensors have been connected
     if (sensorNode1.connected() && sensorNode2.connected()) {
-        //do stuff here
+        //monitor alarms
     }
     //if we haven't connected both, then scan for them
     else {
@@ -135,6 +159,13 @@ void loop() {
             Log.info("%d devices found", count);
         }
     }
+}
+
+/* Functions to control the functionality of clusterhead actuators */
+
+/* Alarm triggered by 
+void startAlarm1(){
+    //Blue LED flashing, 0.5 Hz frequency
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
