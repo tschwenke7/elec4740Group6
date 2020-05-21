@@ -17,6 +17,12 @@
 // normal cloud-connected mode
 void setup();
 void loop();
+void monitorAlarms(uint8_t secondsPassed);
+void updateSoundThresholdCounters(uint8_t secondsPassed);
+void updateStatusLed();
+bool alarmCondtitionsMet(int alarmNumber);
+void startAlarm(int alarmNumber);
+void resetAlarm(int alarmNumber);
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onCurrentReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
@@ -26,14 +32,52 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-uint64_t calculateTransmissionDelay(uint64_t sentTime);
 #line 13 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
+/* Control variables */
+/* Number of quarter-seconds which have passed during the current 2 second cycle
+ * of the main loop. Used to activate flasing lights at different intervals of quarter seconds.
+ * May eventually overflow, but that's ok cause loop only uses modulo math*/
+uint32_t quarterSeconds = 0;
+/* holds the starting millis of this execution of the main loop, 
+so we can work out how long to wait before beginning the next loop */
+unsigned long loopStart = 0;
+
+/* Data tracking variables */
+int currentSound = 0;
+uint16_t currentLight = 0;
+uint8_t currentDistance = 0;
+
+/* Alarm variables */
+//The active status of each of the 4 possible alarm conditions. True if active, false if inactive
+bool alarmActive [4] = {false, false, false, false};
+/* The absolute time in seconds each of the 4 alarms was activated.*/
+long long alarmActivatedTimes[4] = {0,0,0,0};
+//after this number of seconds without another alarm-worthy event, the alarm will automatically reset.
+const uint16_t ALARM_COOLOFF_DELAY = 60;
+//number of seconds since each alarm stopped being triggered. If one reaches ALARM_COOLOFF_DELAY, reset that alarm
+uint16_t alarmCooloffCounters [4] = {0, 0, 0, 0};
+
+//alarm 1 will be triggered if an object is detected within this many centimetres
+const uint16_t DISTANCE_THRESHOLD = 25;
+//light must go below this value of Lux to trigger alarms 2 or 3
+const uint16_t LIGHT_THRESHOLD = 100;
+//no alarm below t0, alarm 2 may trigger between t0-t1, alarm 3 between t1-t2, alarm 4 if > t2
+const int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
+//sound must continue for t0 seconds to trigger alarm 2, or t1 seconds for alarm 3
+const uint16_t SOUND_DURATION_THRESHOLDS [2] = {30, 10};
+
+//how many seconds has the sound been at a level which can trigger t0=alarm2 or t1=alarm3?
+unsigned long durationAtSoundThresholds[2] = {0, 0};
+
+
+
+/* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
-BlePeerDevice sensorNode1; //"754ebf5e-ce31-4300-9fd5-a8fb4ee4a811"
+BlePeerDevice sensorNode1;
 BlePeerDevice sensorNode2;
 BleUuid sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
@@ -81,7 +125,24 @@ void setup() {
 void loop() { 
     //do stuff if both sensors have been connected
     if (sensorNode1.connected() && sensorNode2.connected()) {
-        //do stuff here
+        //record start time of this loop
+        loopStart = millis();
+
+        //update alarm cooloff timers and sound-threshold durations only every 2 seconds
+        if(quarterSeconds % 8 == 0){
+            //monitor alarms to see if they need to timeout and be reset
+            monitorAlarms(2);
+            //update sound threshold counters "2" seconds after last update
+            updateSoundThresholdCounters(2);
+        }
+
+        //flash appropriate colour at appropriate interval for active alarm
+        updateStatusLed();
+        
+        //loop every 250ms, to allow 2Hz status LED flashing if necessary
+        //subtract processing time from the delay to make intervals consistent
+        delay(250 - (millis() - loopStart));
+        quarterSeconds+=1;  
     }
     //if we haven't connected both, then scan for them
     else {
@@ -155,6 +216,206 @@ void loop() {
     }
 }
 
+/* Update the sound threshold counters after a given amount of seconds has passed
+ * @param secondsPassed: number of seconds since this was last called. */
+void monitorAlarms(uint8_t secondsPassed){
+    //check each of the 4 alarms
+    for (uint8_t i = 0; i < 4; i++){
+        //if this alarm is still active...
+        if(alarmActive[i]){
+            //if its conditions are no longer met, increment the cooloff counter
+            if(!alarmCondtitionsMet(i)){    
+                alarmCooloffCounters[i] += secondsPassed;
+                //if cooloff counter has reached the cooloff delay, then automatically reset this alarm
+                if(alarmCooloffCounters[i] >= ALARM_COOLOFF_DELAY){
+                    resetAlarm(i);
+                }
+            }
+            //if conditions are still met, reset cooloff counter
+            else{
+                alarmCooloffCounters[i] = 0;
+            }
+        }
+    }
+}
+
+/* Update the sound threshold counters after a given amount of seconds has passed
+ * @param secondsPassed: number of seconds since this was last called. */
+void updateSoundThresholdCounters(uint8_t secondsPassed){
+    //only count up if light level is below threshold
+    if(currentLight < LIGHT_THRESHOLD){
+        if (currentSound > SOUND_VOLUME_THRESHOLDS[1]){
+            durationAtSoundThresholds[1] += secondsPassed;//increment high volume counter
+            durationAtSoundThresholds[0] += secondsPassed;//increment med volume counter
+        }
+        else if(currentSound > SOUND_VOLUME_THRESHOLDS[0]){
+            durationAtSoundThresholds[1] = 0;//reset high volume counter
+            durationAtSoundThresholds[0] += secondsPassed;//increment med volume counter
+        }
+        else{
+            //reset both counters
+            durationAtSoundThresholds[1] = 0;
+            durationAtSoundThresholds[0] = 0;
+        }
+    }
+    
+    //if it's too bright, don't count, and reset counters
+    else{
+        //reset both counters
+        durationAtSoundThresholds[1] = 0;
+        durationAtSoundThresholds[0] = 0;
+    }
+}
+
+/* Turns the status light on and off at the appropriate intervals, 
+based on the values of "quarterSeconds" and "alarmActive[]" 
+TODO - add code to actually turn on/off the LED */
+void updateStatusLed(){
+    if(alarmActive[0]){
+        if(quarterSeconds % 8 == 0){
+            //turn status light on blue
+        }
+        else if(quarterSeconds % 8 == 4){
+            //turn status light off
+        }
+    }
+    else if(alarmActive[1]){
+        if (quarterSeconds % 2 == 0){
+            //turn blue light on
+        }
+        else{
+            //turn blue light off
+        }
+    }
+    else if(alarmActive[2]){
+        if(quarterSeconds % 4 == 0){
+            //turn red light on
+        }
+        else if(quarterSeconds % 4 == 2){
+            // turn red light off
+        }
+    }
+    else if(alarmActive[3]){
+        if (quarterSeconds % 2 == 0){
+            //turn red light on
+        }
+        else{
+            //turn red light off
+        }
+    }
+}
+
+/* Functions to control the functionality of clusterhead actuators */
+
+/* Alarms */
+/* checks if the current conditions meet those required for the specified alarm.
+    alarmNumber can be 0 - 3, corresponding to the 4 different alarms.  */
+bool alarmCondtitionsMet(int alarmNumber){
+    //TODO - add variables so that we can check if these conditions are currently met.
+    switch(alarmNumber){
+        case 0:
+            //Object movement detected within 25cms
+            return (
+                currentDistance != 0 
+                && currentDistance <= DISTANCE_THRESHOLD
+            );
+        case 1:
+            //Sound Level 55-70 dBA for 30 seconds, light level <100 lux and noise last for more than 30 sec
+            return (
+                durationAtSoundThresholds[0] >= SOUND_DURATION_THRESHOLDS[0]
+                && currentLight < LIGHT_THRESHOLD
+            );
+        case 2:
+            //Sound level > 70 dBA for 10 seconds, light level < 100 lux and noise last for more than 10 sec
+            return (
+                durationAtSoundThresholds[1] >= SOUND_DURATION_THRESHOLDS[1]
+                && currentLight < LIGHT_THRESHOLD
+            );
+        case 3:
+            //Sound level > 80 dBA
+            return (currentSound > SOUND_VOLUME_THRESHOLDS[2]);
+        default:
+            Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'alarmConditionsMet' function. Expected value from 0 - 3, got %d", alarmNumber);
+            return false;
+    }
+}
+
+/* Activates the specified alarm.
+    alarmNumber can be 0 - 3, corresponding to the 4 different alarms.  */
+void startAlarm(int alarmNumber){
+    //which node triggered this alarm?
+    uint8_t alarmSourceSensorNodeId = 2;
+    //check that alarmNumber is valid index
+    if(alarmNumber >=0 && alarmNumber <= 3){
+        //record the time this alarm was activated
+        alarmActivatedTimes[alarmNumber] = Time.now();
+
+        //TODO - activate the appropriate light
+        switch(alarmNumber){
+            case 0:
+                //Blue LED flashing, 0.5 Hz frequency
+                alarmSourceSensorNodeId = 1;
+                break;
+            case 1:
+                //Blue LED flashing, 2 Hz 
+                break;
+            case 2:
+                //Red LED flashing, 1 Hz
+                break;
+            case 3:
+                //Red LED flashing, 2 Hz
+                break;
+        }
+        //TODO - update LCD - "alarm at sensor node 1|2"
+        Log.info("Activating alarm %d from sensor node %u", alarmNumber, alarmSourceSensorNodeId);
+    }
+    else{
+        Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'startAlarm' function. Expected value from 0 - 3, got %d", alarmNumber);
+    }
+
+    
+}
+
+/* Resets/deactivates the specified alarm.
+    alarmNumber can be 0 - 3, corresponding to the 4 different alarms.  */
+void resetAlarm(int alarmNumber){
+    //check that alarmNumber is valid index
+    if(alarmNumber >=0 && alarmNumber <= 3){
+        uint8_t alarmSensorNodeId = 2; //the sensor node which the alarm originated from
+        //record the time elapsed
+        int eventDuration = Time.now() - alarmActivatedTimes[alarmNumber];
+        //TODO - convert alarmActivatedTimes[alarmNumber] to printable local date/time
+
+        //TODO - deactivate the appropriate light
+        switch(alarmNumber){
+            case 0:
+                //Blue LED flashing, 0.5 Hz frequency
+                alarmSensorNodeId = 1;
+                break;
+            case 1:
+                //Blue LED flashing, 2 Hz 
+                break;
+            case 2:
+                //Red LED flashing, 1 Hz
+                break;
+            case 3:
+                //Red LED flashing, 2 Hz
+                break;
+        }
+
+        //log event information
+        Log.info("Alarm %d triggered by Sensor Node %u at [converted date/time here]. Duration: %d seconds",
+            alarmNumber, alarmSensorNodeId, eventDuration);
+
+        //set alarm to inactive
+        alarmActive[alarmNumber] = false;
+        //TODO - turn off alarm light
+    }
+    else{
+        Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'resetAlarm' function. Expected value from 0 - 3, got %d", alarmNumber);
+    }
+}
+
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -201,6 +462,8 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
 
     memcpy(&byteValue, &data[0], sizeof(uint8_t));
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
+
+    currentDistance = byteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -225,6 +488,8 @@ void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
+
+    currentLight = twoByteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -237,6 +502,8 @@ void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     Log.info("Sensor 2 - Sound: %u dB", twoByteValue);
+
+    currentSound = twoByteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -259,9 +526,4 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
-}
-
-uint64_t calculateTransmissionDelay(uint64_t sentTime){
-    return Time.now() - sentTime;
-    // return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - sentTime;
 }
