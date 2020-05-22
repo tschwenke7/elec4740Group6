@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
@@ -32,7 +32,7 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 13 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 13 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -50,6 +50,10 @@ unsigned long loopStart = 0;
 int currentSound = 0;
 uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
+
+/* received variables from the sensors */
+int16_t getTempsn1 = -999;
+//int16_t getTempsn1 = -999;
 
 /* Alarm variables */
 //The active status of each of the 4 possible alarm conditions. True if active, false if inactive
@@ -103,11 +107,15 @@ const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
 void setup() {
+    //take control of the onboard LED
+    RGB.control(true);
+
     const uint8_t val = 0x01;
     dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
     (void)logHandler; // Does nothing, just to eliminate the unused variable warning
 
     BLE.on();
+    
     
     //map functions to be called whenever new data is received for a characteristic
     temperatureSensorCharacteristic1.onDataReceived(onTemperatureReceived1, NULL);
@@ -124,7 +132,7 @@ void setup() {
 
 void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected()){// && sensorNode2.connected()) {
+    if (sensorNode1.connected()){// && sensorNode2.connected()) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
@@ -145,7 +153,6 @@ void loop() {
             uint16_t test = (uint16_t) quarterSeconds;
             fanSpeedCharacteristic.setValue(test);
             Log.info("%u", test);
-        
         }
         //loop every 250ms, to allow 2Hz status LED flashing if necessary
         //subtract processing time from the delay to make intervals consistently sized
@@ -247,14 +254,13 @@ void monitorAlarms(uint8_t secondsPassed){
         }
     }
 
-    //TODO - check if one of the time-based alarms (alarms 1 and 2) need to be activated
-    //waiting to hear what we do with multiple concurrent alarms
-    // if(!alarmActive[2] && alarmCondtitionsMet[2]){
-    //     startAlarm[2];
-    // }
-    // else if(!alarmActive[1] && alarmCondtitionsMet[1]){
-    //     startAlarm[1];
-    // }
+    //check if the time-based alarms (alarms 1 and 2) need to be activated
+    if(!alarmActive[2] && alarmCondtitionsMet(2)){
+        startAlarm(2);
+    }
+    if(!alarmActive[1] && alarmCondtitionsMet(1)){
+        startAlarm(1);
+    }
 }
 
 /* Update the sound threshold counters after a given amount of seconds has passed
@@ -286,43 +292,51 @@ void updateSoundThresholdCounters(uint8_t secondsPassed){
 }
 
 /* Turns the status light on and off at the appropriate intervals, 
-based on the values of "quarterSeconds" and "alarmActive[]" 
-TODO - add code to actually turn on/off the LED */
+based on the values of "quarterSeconds" and "alarmActive[]".
+Priority: First active alarm in this list will control the status LED: alarm 0, 3, 2, 1 */
 void updateStatusLed(){
     //alarm 0 - Blue LED flashing, 0.5 Hz frequency
     if(alarmActive[0]){
         if(quarterSeconds % 8 == 0){
             //turn status light on blue
+            RGB.color(0,0,255);
         }
         else if(quarterSeconds % 8 == 4){
             //turn status light off
-        }
-    }
-    //alarm 1 - Blue LED flashing, 2 Hz 
-    else if(alarmActive[1]){
-        if (quarterSeconds % 2 == 0){
-            //turn blue light on
-        }
-        else{
-            //turn blue light off
-        }
-    }
-    //alarm 2 - Red LED flashing, 1 Hz
-    else if(alarmActive[2]){
-        if(quarterSeconds % 4 == 0){
-            //turn red light on
-        }
-        else if(quarterSeconds % 4 == 2){
-            // turn red light off
+            RGB.color(0,0,0);
         }
     }
     //alarm 3 - Red LED flashing, 2 Hz
     else if(alarmActive[3]){
         if (quarterSeconds % 2 == 0){
             //turn red light on
+            RGB.color(255,0,0);
         }
         else{
             //turn red light off
+            RGB.color(0,0,0);
+        }
+    }
+    //alarm 2 - Red LED flashing, 1 Hz
+    else if(alarmActive[2]){
+        if(quarterSeconds % 4 == 0){
+            //turn red light on
+            RGB.color(255,0,0);
+        }
+        else if(quarterSeconds % 4 == 2){
+            // turn red light off
+            RGB.color(0,0,0);
+        }
+    }
+    //alarm 1 - Blue LED flashing, 2 Hz 
+    else if(alarmActive[1]){
+        if (quarterSeconds % 2 == 0){
+            //turn blue light on
+            RGB.color(0,0,255);
+        }
+        else{
+            //turn blue light off
+            RGB.color(0,0,0);
         }
     }
 }
@@ -333,7 +347,6 @@ void updateStatusLed(){
 /* checks if the current conditions meet those required for the specified alarm.
     alarmNumber can be 0 - 3, corresponding to the 4 different alarms.  */
 bool alarmCondtitionsMet(int alarmNumber){
-    //TODO - add variables so that we can check if these conditions are currently met.
     switch(alarmNumber){
         case 0:
             //Object movement detected within 25cms
@@ -424,7 +437,8 @@ void resetAlarm(int alarmNumber){
 
         //set alarm to inactive
         alarmActive[alarmNumber] = false;
-        //TODO - turn off alarm light
+        //turn off alarm light
+        RGB.color(0,0,0);
     }
     else{
         Log.info("@@@@@@ ERROR - invalid alarm number supplied to 'resetAlarm' function. Expected value from 0 - 3, got %d", alarmNumber);
@@ -437,11 +451,15 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     int8_t receivedTemp;
     uint64_t sentTime;
 
+    
     //read the time of sending, to calculate transmission delay
     memcpy(&sentTime, &data[0] + sizeof(receivedTemp), sizeof(sentTime));
     //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     
+    //Stores temperature on clusterhead.
+    getTempsn1 = receivedTemp;
+
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
@@ -479,11 +497,10 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
 
     currentDistance = byteValue;
-    //TODO - activate alarm 0 if it's within 25cm threshold
-    //waiting to hear back about multiple concurrent alarms
-    // if(alarmCondtitionsMet(0)){
-    //     startAlarm(0);
-    // }
+    //activate alarm 0 if it's within 25cm threshold
+    if(alarmCondtitionsMet(0)){
+        startAlarm(0);
+    }
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -525,11 +542,10 @@ void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 
     currentSound = twoByteValue;
 
-    //TODO - activate alarm 3 immediately if above max volume threshold
-    //waiting to hear back about multiple concurrent alarms
-    // if(alarmCondtitionsMet(3)){
-    //     startAlarm(3);
-    // }
+    //activate alarm 3 immediately if above max volume threshold
+    if(alarmCondtitionsMet(3)){
+        startAlarm(3);
+    }
 
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
