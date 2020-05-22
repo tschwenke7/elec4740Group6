@@ -69,7 +69,7 @@ const uint fanSpeedHz = 25000;
 //advertised bluetooth characteristic
 const char* fanSpeedUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
 BleCharacteristic fanSpeedCharacteristic("fanSpeed",
-BleCharacteristicProperty::WRITE_WO_RSP, fanSpeedUuid, sensorNode1ServiceUuid, onDataReceived);
+BleCharacteristicProperty::WRITE_WO_RSP, fanSpeedUuid, sensorNode1ServiceUuid, onDataReceived, NULL);
 
 /* Initial setup */
 void setup() {
@@ -85,6 +85,7 @@ void setup() {
     BLE.addCharacteristic(temperatureSensorCharacteristic);
     BLE.addCharacteristic(humiditySensorCharacteristic);
     BLE.addCharacteristic(distanceSensorCharacteristic);
+    BLE.addCharacteristic(fanSpeedCharacteristic);
 
     //data to be advertised
     BleAdvertisingData advData;
@@ -154,7 +155,6 @@ void loop() {
                 lastRecordedDistance = getValue;//update last recorded distance
                 Log.info("Distance transmitted.");
             }
-            Log.info("Distance: " + getValue);
         }
         //current
         if(currentTime - lastCurrentUpdate >= CURRENT_READ_DELAY){
@@ -205,7 +205,7 @@ int8_t readTemperature(){
     //cloud data - can delete when not testing
 	char str[2];
     sprintf(str, "%u", t);
-	Particle.publish("temperature", str, PUBLIC);
+	//Particle.publish("temperature", str, PUBLIC);
 	
 	return t;
 }
@@ -219,7 +219,7 @@ uint8_t readHumidity(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", h);
-	Particle.publish("humidity", str, PUBLIC);
+	//Particle.publish("humidity", str, PUBLIC);
 
     return  h;
 }
@@ -231,7 +231,7 @@ uint16_t readCurrent(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", 0);
-	Particle.publish("Current (not currently implemented)", str, PUBLIC);
+	//Particle.publish("Current (not currently implemented)", str, PUBLIC);
 
     Log.info("Read current (not currently implemented): %u", 0);
     return 0;
@@ -245,7 +245,7 @@ uint8_t readDistance(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", cms);
-	Particle.publish("distance", str, PUBLIC);
+	//Particle.publish("distance", str, PUBLIC);
     
     return cms;
 }

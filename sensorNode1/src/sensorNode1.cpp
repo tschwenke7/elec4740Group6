@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 
 #include "Particle.h"
 #include "dct.h"
@@ -24,7 +24,7 @@ int8_t readTemperature();
 uint8_t readHumidity();
 uint16_t readCurrent();
 uint8_t readDistance();
-#line 14 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 14 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 DHT dht(D0);        //DHT for temperature/humidity 
 
 SYSTEM_MODE(AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
@@ -79,11 +79,11 @@ BleCharacteristicProperty::NOTIFY, currentSensorUuid, sensorNode1ServiceUuid);
 
 /* Fan actuator characteristic */
 const int fanSpeedPin = -1; //TODO: update this
-const uint fanSpeedHz = 50;
+const uint fanSpeedHz = 25000;
 //advertised bluetooth characteristic
 const char* fanSpeedUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
 BleCharacteristic fanSpeedCharacteristic("fanSpeed",
-BleCharacteristicProperty::WRITE_WO_RSP, fanSpeedUuid, sensorNode1ServiceUuid, onDataReceived);
+BleCharacteristicProperty::WRITE_WO_RSP, fanSpeedUuid, sensorNode1ServiceUuid, onDataReceived, NULL);
 
 /* Initial setup */
 void setup() {
@@ -99,6 +99,7 @@ void setup() {
     BLE.addCharacteristic(temperatureSensorCharacteristic);
     BLE.addCharacteristic(humiditySensorCharacteristic);
     BLE.addCharacteristic(distanceSensorCharacteristic);
+    BLE.addCharacteristic(fanSpeedCharacteristic);
 
     //data to be advertised
     BleAdvertisingData advData;
@@ -168,7 +169,6 @@ void loop() {
                 lastRecordedDistance = getValue;//update last recorded distance
                 Log.info("Distance transmitted.");
             }
-            Log.info("Distance: " + getValue);
         }
         //current
         if(currentTime - lastCurrentUpdate >= CURRENT_READ_DELAY){
@@ -219,7 +219,7 @@ int8_t readTemperature(){
     //cloud data - can delete when not testing
 	char str[2];
     sprintf(str, "%u", t);
-	Particle.publish("temperature", str, PUBLIC);
+	//Particle.publish("temperature", str, PUBLIC);
 	
 	return t;
 }
@@ -233,7 +233,7 @@ uint8_t readHumidity(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", h);
-	Particle.publish("humidity", str, PUBLIC);
+	//Particle.publish("humidity", str, PUBLIC);
 
     return  h;
 }
@@ -245,7 +245,7 @@ uint16_t readCurrent(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", 0);
-	Particle.publish("Current (not currently implemented)", str, PUBLIC);
+	//Particle.publish("Current (not currently implemented)", str, PUBLIC);
 
     Log.info("Read current (not currently implemented): %u", 0);
     return 0;
@@ -259,7 +259,7 @@ uint8_t readDistance(){
     //cloud data - can delete when not testing
     char str[2];
     sprintf(str, "%u", cms);
-	Particle.publish("distance", str, PUBLIC);
+	//Particle.publish("distance", str, PUBLIC);
     
     return cms;
 }

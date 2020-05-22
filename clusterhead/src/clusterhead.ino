@@ -86,6 +86,7 @@ void setup() {
 
     BLE.on();
     
+    
     //map functions to be called whenever new data is received for a characteristic
     temperatureSensorCharacteristic1.onDataReceived(onTemperatureReceived1, NULL);
     humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
@@ -101,7 +102,7 @@ void setup() {
 
 void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected() && sensorNode2.connected()) {
+    if (sensorNode1.connected()){// && sensorNode2.connected()) {
         //record start time of this loop
         loopStart = millis();
 
@@ -118,9 +119,12 @@ void loop() {
         updateStatusLed();
 
         //test bluetooth
-        uint16_t test = (uint16_t) quarterSeconds;
-        fanSpeedCharacteristic.setValue(test);
+        if (quarterSeconds % 8 == 0){
+            uint16_t test = (uint16_t) quarterSeconds;
+            fanSpeedCharacteristic.setValue(test);
+            Log.info("%u", test);
         
+        }
         //loop every 250ms, to allow 2Hz status LED flashing if necessary
         //subtract processing time from the delay to make intervals consistently sized
         delay(250 - (millis() - loopStart));
