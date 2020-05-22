@@ -116,9 +116,13 @@ void loop() {
 
         //flash appropriate colour at appropriate interval for active alarm
         updateStatusLed();
+
+        //test bluetooth
+        uint16_t test = (uint16_t) quarterSeconds;
+        fanSpeedCharacteristic.setValue(test);
         
         //loop every 250ms, to allow 2Hz status LED flashing if necessary
-        //subtract processing time from the delay to make intervals consistent
+        //subtract processing time from the delay to make intervals consistently sized
         delay(250 - (millis() - loopStart));
         quarterSeconds+=1;  
     }

@@ -65,7 +65,7 @@ BleCharacteristicProperty::NOTIFY, currentSensorUuid, sensorNode1ServiceUuid);
 
 /* Fan actuator characteristic */
 const int fanSpeedPin = -1; //TODO: update this
-const uint fanSpeedHz = 50;
+const uint fanSpeedHz = 25000;
 //advertised bluetooth characteristic
 const char* fanSpeedUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
 BleCharacteristic fanSpeedCharacteristic("fanSpeed",
