@@ -66,6 +66,12 @@ BleCharacteristicProperty::NOTIFY, currentSensorUuid, sensorNode1ServiceUuid);
 /* Fan actuator characteristic */
 const int fanSpeedPin = -1; //TODO: update this
 const uint fanSpeedHz = 25000;
+
+bool fanTimeSet = false;
+long fanStartTime = -1;
+long fanGetTime = -1;
+int fanInitTime = 100;
+
 //advertised bluetooth characteristic
 const char* fanSpeedUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
 BleCharacteristic fanSpeedCharacteristic("fanSpeed",
@@ -110,6 +116,17 @@ void loop() {
            A change in the characteristic will notify the connected cluster head
         */
         //temperature and humidity
+        //Sets fan current time and wait time.
+        if(fanTimeSet == false)
+        {
+            fanTimeSet = true;
+            fanStartTime = currentTime; //Stores start time since current time is constantly updating.
+        }
+        if(fanTimeSet == true)  //Assigns the fan get time to current time
+        {
+            fanGetTime = currentTime;
+        }
+
         if(currentTime - lastTemperatureUpdate >= TEMPERATURE_READ_DELAY){
             //reset read delay timer
             lastTemperatureUpdate = currentTime;
@@ -179,14 +196,19 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
     uint16_t fanSpeed;
     memcpy(&fanSpeed, &data[0], sizeof(uint16_t));
 
-    Log.info("The fan power has been set via BT to %u", fanSpeed);
-    if(fanSpeed < 4095){
-        //set the PWM output to the fan
-        analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
-    }
-    else{
-        Log.info("Invalid fan power - should be less than 4095.");
-    }    
+    if( (fanGetTime - fanStartTime) > fanInitTime)
+    {
+        Log.info("Fan Started!");
+        //todo: Don't run for the first 0.1 second.
+        Log.info("The fan power has been set via BT to %u", fanSpeed);
+        if(fanSpeed < 4095){
+            //set the PWM output to the fan
+            analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
+        }
+        else{
+            Log.info("Invalid fan power - should be less than 4095.");
+        }
+    } 
 }
 
 /** Returns the current temperature in microseconds */

@@ -28,6 +28,10 @@ int currentSound = 0;
 uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
 
+/* received variables from the sensors */
+int16_t getTempsn1 = -999;
+//int16_t getTempsn1 = -999;
+
 /* Alarm variables */
 //The active status of each of the 4 possible alarm conditions. True if active, false if inactive
 bool alarmActive [4] = {false, false, false, false};
@@ -102,7 +106,7 @@ void setup() {
 
 void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected()){// && sensorNode2.connected()) {
+    if (sensorNode1.connected()){// && sensorNode2.connected()) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
@@ -123,7 +127,6 @@ void loop() {
             uint16_t test = (uint16_t) quarterSeconds;
             fanSpeedCharacteristic.setValue(test);
             Log.info("%u", test);
-        
         }
         //loop every 250ms, to allow 2Hz status LED flashing if necessary
         //subtract processing time from the delay to make intervals consistently sized
@@ -415,11 +418,15 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     int8_t receivedTemp;
     uint64_t sentTime;
 
+    
     //read the time of sending, to calculate transmission delay
     memcpy(&sentTime, &data[0] + sizeof(receivedTemp), sizeof(sentTime));
     //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     
+    //Stores temperature on clusterhead.
+    getTempsn1 = receivedTemp;
+
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
