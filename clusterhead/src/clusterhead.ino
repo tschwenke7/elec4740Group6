@@ -1,6 +1,7 @@
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
+#include <string>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -44,17 +45,15 @@ unsigned long durationAtSoundThresholds[2] = {0, 0};
 
 /* USER CONFIGURABLE VARIABLES */
 //after this number of seconds without another alarm-worthy event, the alarm will automatically reset.
-const uint16_t ALARM_COOLOFF_DELAY = 60;
+uint16_t ALARM_COOLOFF_DELAY = 60;
 //alarm 0 will be triggered if an object is detected within this many centimetres
-const uint16_t DISTANCE_THRESHOLD = 25;
+uint16_t DISTANCE_THRESHOLD = 25;
 //light must go below this value of Lux to trigger alarms 1 or 2
-const uint16_t LIGHT_THRESHOLD = 100;
+uint16_t LIGHT_THRESHOLD = 100;
 //no alarm below t0, alarm 1 may trigger between t0-t1, alarm 2 between t1-t2, alarm 3 if > t2
-const int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
+int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
 //sound must continue for t0 seconds to trigger alarm 1, or t1 seconds for alarm 2
-const uint16_t SOUND_DURATION_THRESHOLDS [2] = {30, 10};
-
-
+uint16_t SOUND_DURATION_THRESHOLDS [2] = {30, 10};
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -83,7 +82,82 @@ BleCharacteristic ledVoltageCharacteristic;
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
+/* Particle Cloud functions */
+/* Reset one or all alarms */
+int resetAlarmCloud(String alarmNumber){
+    //reset all alarms if input is "all"
+    if(alarmNumber.equalsIgnoreCase("all") == 0){
+        for(int i = 0; i < 4; i++){
+            if(alarmActive[i]){
+                resetAlarm(i);
+            }
+        }
+        return 1;
+    }
+    //otherwise only reset the alarm number provided
+    else {
+        int i = alarmNumber.toInt();
+        if(alarmActive[i]){
+            resetAlarm(i);
+        }
+        return 1;
+    }
+}
+
+/* set ALARM_COOLOFF_DELAY */
+int setAlarmCooloffDelay(String delay){
+    ALARM_COOLOFF_DELAY = (uint16_t) delay.toInt();
+    return 1;
+}
+
+/* set DISTANCE_THRESHOLD */
+int setDistanceThreshold(String threshold){
+    DISTANCE_THRESHOLD = (uint16_t) threshold.toInt();
+    return 1;
+}
+
+/* set LIGHT_THRESHOLD */
+int setLightThreshold(String threshold){
+    LIGHT_THRESHOLD = (uint16_t) threshold.toInt();
+    return 1;
+}
+
+/* set SOUND_VOLUME_THRESHOLDS based on comma-separated string of 3 numbers */
+int setVolumeThresholds(String thresholds){
+    String delimiter = ",";
+    uint8_t pos = 0;
+    int i = 0;
+    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
+        SOUND_VOLUME_THRESHOLDS[i] = (uint16_t) thresholds.substring(0, pos).toInt();
+        thresholds.remove(0, pos + delimiter.length());
+        i++;
+    }
+    return 1;
+}
+
+/* set SOUND_DURATION_THRESHOLDS based on comma-separated string of 3 numbers */
+int setSoundDurationThresholds(String thresholds){
+    String delimiter = ",";
+    uint8_t pos = 0;
+    int i = 0;
+    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
+        SOUND_DURATION_THRESHOLDS[i] = (uint16_t) thresholds.substring(0, pos).toInt();
+        thresholds.remove(0, pos + delimiter.length());
+        i++;
+    }
+    return 1;  
+}
+
+
 void setup() {
+    //initialise Particle Cloud functions
+    Particle.function("resetAlarm",resetAlarmCloud);
+    Particle.function("setAlarmCooloffDelay",setAlarmCooloffDelay);
+    Particle.function("setDistanceThreshold",setDistanceThreshold);
+    Particle.function("setLightThreshold",setLightThreshold);
+    Particle.function("setVolumeThresholds",setVolumeThresholds);
+    Particle.function("setSoundDurationThresholds",setSoundDurationThresholds);
+
     //take control of the onboard RGB LED
     RGB.control(true);
 
@@ -409,7 +483,7 @@ void resetAlarm(int alarmNumber){
         }
 
         //log event information
-        Log.info("Alarm %d triggered by Sensor Node %u at [converted date/time here]. Duration: %d seconds",
+        Log.info("Alarm %d event triggered by Sensor Node %u at [converted date/time here]. Duration: %d seconds",
             alarmNumber, alarmSensorNodeId, eventDuration);
 
         //set alarm to inactive
