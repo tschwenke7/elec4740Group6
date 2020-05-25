@@ -44,6 +44,10 @@ unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was tak
 const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded temperatures for short term averages
+int8_t tempArray[5];// = {-128, -128, -128, -128, -128};  //Assigns -128 to these at the start
+int8_t tempAssigned = 0;                                //Tracks the number of assigned temperatures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
+int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array size for readability.
 
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
@@ -119,6 +123,7 @@ void setup() {
     rangefinder.init();
     //setup fan pin as PWM output
     pinMode(fanSpeedPin, OUTPUT);
+
 }
 
 void loop() {
@@ -129,7 +134,6 @@ void loop() {
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
            A change in the characteristic will notify the connected cluster head
         */
-        //temperature and humidity
         //Sets fan current time and wait time.
         if(fanTimeSet == false)
         {
@@ -141,22 +145,39 @@ void loop() {
             fanGetTime = currentTime;
         }
 
+        //temperature and humidity
         if(currentTime - lastTemperatureUpdate >= TEMPERATURE_READ_DELAY){
             //reset read delay timer
             lastTemperatureUpdate = currentTime;
             //read temp
             int8_t temp = readTemperature();
 
-            //package together with send time in a buffer
-            uint8_t* transmission[9];
-            memcpy(transmission, &temp, sizeof(temp));
+            if(tempAssigned == tempArraySize)
+            {
+                //1: calculates average
+                int8_t tempAverage = 0;
+                for(int i = 0; i < tempArraySize; i++)
+                {
+                    tempAverage += tempArray[i];
+                }
+                tempAverage = (int8_t) tempAverage / tempArraySize;
+                //2: returns the average to the clusterhead.
+                //package together with send time in a buffer
+                uint8_t* transmission[9];
+                memcpy(transmission, &tempAverage, sizeof(tempAverage));
 
-            //record and append the sending time
-            uint64_t sendTime = getCurrentTime();
-            memcpy(transmission + sizeof(temp), &sendTime, sizeof(sendTime));
+                //record and append the sending time
+                uint64_t sendTime = getCurrentTime();
+                memcpy(transmission + sizeof(tempAverage), &sendTime, sizeof(sendTime));
 
-            //send bluetooth transmission
-            temperatureSensorCharacteristic.setValue(transmission);
+                //send bluetooth transmission
+                temperatureSensorCharacteristic.setValue(transmission);
+            }
+            else        //if the temperature array is not full, adds the last temperature to the end.
+            {
+                tempArray[tempAssigned] = temp;
+                tempAssigned++;
+            }
         }
         //humidity
         if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
