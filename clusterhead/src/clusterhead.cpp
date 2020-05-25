@@ -67,6 +67,8 @@ int16_t getTempsn1 = -999;
 bool alarmActive [4] = {false, false, false, false};
 /* The absolute time in seconds each of the 4 alarms was activated.*/
 long long alarmActivatedTimes[4] = {0,0,0,0};
+/* The absolute time in seconds each of the 4 alarms stopped being triggered.*/
+long long alarmEventEndedTimes[4] = {0,0,0,0};
 //number of seconds since each alarm stopped being triggered. If one reaches ALARM_COOLOFF_DELAY, reset that alarm
 uint16_t alarmCooloffCounters [4] = {0, 0, 0, 0};
 //how many seconds has the sound been at a level which can trigger t0=alarm1 or t1=alarm2?
@@ -190,6 +192,9 @@ void setup() {
     //take control of the onboard RGB LED
     RGB.control(true);
 
+    //change timezone to aedt (UTC + 11)
+    Time.zone(11);
+
     const uint8_t val = 0x01;
     dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
     (void)logHandler; // Does nothing, just to eliminate the unused variable warning
@@ -217,7 +222,7 @@ void loop() {
         loopStart = millis();
 
         //update alarm cooloff timers and sound-threshold durations only every 2 seconds
-        if(quarterSeconds % 8 == 0){
+        if(quarterSeconds % 4 == 0){
             /*check if we need to activate time-based alarms, 
             monitor current alarms to see if they need to timeout and be reset */
             monitorAlarms(2);
@@ -320,13 +325,20 @@ void monitorAlarms(uint8_t secondsPassed){
         //if this alarm is still active...
         if(alarmActive[i]){
             //if its conditions are no longer met, increment the cooloff counter
-            if(!alarmCondtitionsMet(i)){    
+            if(!alarmCondtitionsMet(i)){
+                //set the end of alarm time to now, if this is the first iteration of cooloff
+                if(alarmCooloffCounters[i] == 0){
+                    alarmEventEndedTimes[i] = Time.local();
+                }
+
                 alarmCooloffCounters[i] += secondsPassed;
+
                 //if cooloff counter has reached the cooloff delay, then automatically reset this alarm
                 if(alarmCooloffCounters[i] >= ALARM_COOLOFF_DELAY){
                     resetAlarm(i);
                 }
             }
+            
             //if conditions are still met, reset cooloff counter
             else{
                 alarmCooloffCounters[i] = 0;
@@ -462,7 +474,7 @@ void startAlarm(int alarmNumber){
     if(alarmNumber >=0 && alarmNumber <= 3){
         //activate this alarm and record the time it was activated
         alarmActive[alarmNumber] = true;
-        alarmActivatedTimes[alarmNumber] = Time.now();
+        alarmActivatedTimes[alarmNumber] = Time.local();
 
         //do alarm-specific logic
         //which node triggered this alarm?
@@ -494,8 +506,8 @@ void resetAlarm(int alarmNumber){
     //check that alarmNumber is valid index
     if(alarmNumber >=0 && alarmNumber <= 3){
         //record the time elapsed
-        int eventDuration = Time.now() - alarmActivatedTimes[alarmNumber];
-        //TODO - convert alarmActivatedTimes[alarmNumber] to printable local date/time
+        long endTime = Time.local();
+        int eventDuration = endTime - alarmActivatedTimes[alarmNumber];
 
         //alarm-specific logic
         uint8_t alarmSensorNodeId = 2; //the sensor node which the alarm originated from
@@ -512,8 +524,8 @@ void resetAlarm(int alarmNumber){
         }
 
         //log event information
-        Log.info("Alarm %d event triggered by Sensor Node %u at [converted date/time here]. Duration: %d seconds",
-            alarmNumber, alarmSensorNodeId, eventDuration);
+        Log.info("Alarm %d event triggered by Sensor Node %u at %s. Duration: %d seconds",
+            alarmNumber, alarmSensorNodeId, Time.timeStr(alarmActivatedTimes[alarmNumber]), eventDuration);
 
         //set alarm to inactive
         alarmActive[alarmNumber] = false;
