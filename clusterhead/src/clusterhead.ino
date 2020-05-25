@@ -2,6 +2,7 @@
 #include "dct.h"
 #include <chrono>
 #include <string>
+#include <LiquidCrystal.h>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -29,8 +30,6 @@ int currentSound = 0;
 uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
 
-/* received variables from the sensors */
-int16_t getTempsn1 = -999;
 //int16_t getTempsn1 = -999;
 
 /* Alarm variables */
@@ -79,6 +78,10 @@ BleCharacteristic soundSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
 BleCharacteristic currentSensorCharacteristic2;
 BleCharacteristic ledVoltageCharacteristic;
+
+
+
+
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
@@ -520,8 +523,6 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     
-    //Stores temperature on clusterhead.
-    getTempsn1 = receivedTemp;
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));

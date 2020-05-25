@@ -30,6 +30,7 @@ unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was tak
 const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded temperatures for 
 
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor

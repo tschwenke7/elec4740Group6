@@ -2,11 +2,12 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
 #include <string>
+#include <LiquidCrystal.h>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -39,7 +40,7 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 14 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 15 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -58,8 +59,6 @@ int currentSound = 0;
 uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
 
-/* received variables from the sensors */
-int16_t getTempsn1 = -999;
 //int16_t getTempsn1 = -999;
 
 /* Alarm variables */
@@ -108,6 +107,10 @@ BleCharacteristic soundSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
 BleCharacteristic currentSensorCharacteristic2;
 BleCharacteristic ledVoltageCharacteristic;
+
+
+
+
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
@@ -549,8 +552,6 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
     
-    //Stores temperature on clusterhead.
-    getTempsn1 = receivedTemp;
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
