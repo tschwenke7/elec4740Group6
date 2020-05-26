@@ -109,7 +109,8 @@ BleCharacteristic currentSensorCharacteristic2;
 BleCharacteristic ledVoltageCharacteristic;
 
 
-
+//Variables for LCD display
+LiquidCrystal lcd(D0, D1, D2, D3, D4, D5);  
 
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
@@ -216,6 +217,11 @@ void setup() {
     soundSensorCharacteristic.onDataReceived(onSoundReceived, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
     currentSensorCharacteristic2.onDataReceived(onCurrentReceived2, NULL);
+
+    // set up the LCD's number of columns and rows: 
+    lcd.begin(16,2);
+    // Print a message to the LCD.
+    lcd.print("Test");
 }
 
 void loop() { 
@@ -246,6 +252,13 @@ void loop() {
         //subtract processing time from the delay to make intervals consistently sized
         delay(250 - (millis() - loopStart));
         quarterSeconds+=1;  
+
+        //Displays LCD 
+        // set the cursor to column 0, line 1
+        // (note: line 1 is the second row, since counting begins with 0):
+        lcd.setCursor(0, 1);
+        // print the number of seconds since reset:
+        lcd.print(millis()/1000);
     }
     //if we haven't connected both, then scan for them
     else {
