@@ -3,6 +3,7 @@
 #include <chrono>
 #include <string>
 #include <LiquidCrystal.h>
+#include <cstdlib>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -31,8 +32,8 @@ uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
 
 //Gets temp and humidity from sn1, and light from sn2 for logic
-int16_t getTempsn1 = -999;
-int16_t getHumidsn1 = -1;
+int8_t getTempsn1 = -127;
+int8_t getHumidsn1 = -1;
 
 int16_t getLightsn2 = -1;
 uint8_t getHumanDetectsn2 = 0x00;
@@ -48,6 +49,8 @@ long long alarmEventEndedTimes[4] = {0,0,0,0};
 uint16_t alarmCooloffCounters [4] = {0, 0, 0, 0};
 //how many seconds has the sound been at a level which can trigger t0=alarm1 or t1=alarm2?
 unsigned long durationAtSoundThresholds[2] = {0, 0};
+//true if the difference between the last two distance readings was more than 1cm
+bool moving = false;
 
 /* USER CONFIGURABLE VARIABLES */
 //after this number of seconds without another alarm-worthy event, the alarm will automatically reset.
@@ -174,7 +177,7 @@ int setSoundDurationThresholds(String thresholds){
 }
 
 /* set TEMPERATURE_THRESHOLDS based on comma-separated string of 2 numbers */
-int setTemperatureThresholds(String threshold){
+int setTemperatureThresholds(String thresholds){
     String delimiter = ",";
     uint8_t pos = 0;
     int i = 0;
@@ -538,7 +541,8 @@ bool alarmCondtitionsMet(int alarmNumber){
         case 0:
             //Object movement detected within 25cms
             return (
-                currentDistance != 0 
+                moving
+                && currentDistance != 0 
                 && currentDistance <= DISTANCE_THRESHOLD
             );
         case 1:
@@ -601,7 +605,7 @@ void resetAlarm(int alarmNumber){
     //check that alarmNumber is valid index
     if(alarmNumber >=0 && alarmNumber <= 3){
         //calculate the time elapsed
-        int eventDuration = alarmEventEndedTimes[i] - alarmActivatedTimes[alarmNumber];
+        int eventDuration = alarmEventEndedTimes[alarmNumber] - alarmActivatedTimes[alarmNumber];
 
         //alarm-specific logic
         uint8_t alarmSensorNodeId = 2; //the sensor node which the alarm originated from
@@ -645,7 +649,7 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
-    getTempsn1 = temperature;
+    getTempsn1 = receivedTemp;
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -681,11 +685,13 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     memcpy(&byteValue, &data[0], sizeof(uint8_t));
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
 
-    currentDistance = byteValue;
-    //activate alarm 0 if it's within 25cm threshold
+    //set 'moving' flag if it has changed by more than 1cm since last reading
+    moving = (abs(byteValue - currentDistance) > 1);
+    
     if(alarmCondtitionsMet(0)){
         startAlarm(0);
     }
+    currentDistance = byteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 

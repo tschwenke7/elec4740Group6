@@ -2,12 +2,13 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
 #include <string>
 #include <LiquidCrystal.h>
+#include <cstdlib>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 1
@@ -23,6 +24,9 @@ int setDistanceThreshold(String threshold);
 int setAlarmLightThreshold(String threshold);
 int setVolumeThresholds(String thresholds);
 int setSoundDurationThresholds(String thresholds);
+int setTemperatureThresholds(String thresholds);
+int setActuatorLightThresholds(String thresholds);
+int setHumidityThreshold(String threshold);
 void setup();
 void loop();
 void monitorAlarms(uint8_t secondsPassed);
@@ -40,7 +44,7 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 15 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 16 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -59,7 +63,12 @@ int currentSound = 0;
 uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
 
-//int16_t getTempsn1 = -999;
+//Gets temp and humidity from sn1, and light from sn2 for logic
+int8_t getTempsn1 = -127;
+int8_t getHumidsn1 = -1;
+
+int16_t getLightsn2 = -1;
+uint8_t getHumanDetectsn2 = 0x00;
 
 /* Alarm variables */
 //The active status of each of the 4 possible alarm conditions. True if active, false if inactive
@@ -72,6 +81,8 @@ long long alarmEventEndedTimes[4] = {0,0,0,0};
 uint16_t alarmCooloffCounters [4] = {0, 0, 0, 0};
 //how many seconds has the sound been at a level which can trigger t0=alarm1 or t1=alarm2?
 unsigned long durationAtSoundThresholds[2] = {0, 0};
+//true if the difference between the last two distance readings was more than 1cm
+bool moving = false;
 
 /* USER CONFIGURABLE VARIABLES */
 //after this number of seconds without another alarm-worthy event, the alarm will automatically reset.
@@ -84,6 +95,20 @@ uint16_t ALARM_LIGHT_THRESHOLD = 100;
 int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
 //sound must continue for t0 seconds to trigger alarm 1, or t1 seconds for alarm 2
 uint16_t SOUND_DURATION_THRESHOLDS [2] = {30, 10};
+
+int8_t TEMPERATURE_THRESHOLDS [2] = {20, 24};
+uint16_t ACTUATOR_LIGHT_THRESHOLDS[3] = {150, 200, 400};
+uint8_t HUMIDITY_THRESHOLD = 60;
+
+//values for fan speed and LED Voltage
+uint8_t fanspeed2 = 128;
+uint8_t fanspeed1 = 64;
+uint8_t fanspeed0 = 0;
+
+uint8_t ledVolt100 = 254;
+uint8_t ledVolt75 = 191;
+uint8_t ledVolt50 = 128;
+uint8_t ledVolt30 = 77;
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -183,6 +208,38 @@ int setSoundDurationThresholds(String thresholds){
     return 1;  
 }
 
+/* set TEMPERATURE_THRESHOLDS based on comma-separated string of 2 numbers */
+int setTemperatureThresholds(String thresholds){
+    String delimiter = ",";
+    uint8_t pos = 0;
+    int i = 0;
+    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
+        TEMPERATURE_THRESHOLDS[i] = (int8_t) thresholds.substring(0, pos).toInt();
+        thresholds.remove(0, pos + delimiter.length());
+        i++;
+    }
+    return 1; 
+}
+
+/* set ACTUATOR_LIGHT_THRESHOLDS based on comma-separated string of 3 numbers */
+int setActuatorLightThresholds(String thresholds){
+    String delimiter = ",";
+    uint8_t pos = 0;
+    int i = 0;
+    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
+        ACTUATOR_LIGHT_THRESHOLDS[i] = (uint16_t) thresholds.substring(0, pos).toInt();
+        thresholds.remove(0, pos + delimiter.length());
+        i++;
+    }
+    return 1;  
+}
+
+/* set HUMIDITY_THRESHOLD */
+int setHumidityThreshold(String threshold){
+    HUMIDITY_THRESHOLD = (uint8_t) threshold.toInt();
+    return 1;
+}
+
 
 void setup() {
     //initialise Particle Cloud functions
@@ -191,7 +248,9 @@ void setup() {
     Particle.function("setDistanceThreshold",setDistanceThreshold);
     Particle.function("setAlarmLightThreshold",setAlarmLightThreshold);
     Particle.function("setVolumeThresholds",setVolumeThresholds);
-    Particle.function("setSoundDurationThresholds",setSoundDurationThresholds);
+    Particle.function("setTemperatureThresholds",setTemperatureThresholds);
+    Particle.function("setActuatorLightThresholds",setActuatorLightThresholds);
+    Particle.function("setHumidityThreshold",setHumidityThreshold);
 
     //take control of the onboard RGB LED
     RGB.control(true);
@@ -230,24 +289,26 @@ void loop() {
         //record start time of this loop
         loopStart = millis();
 
-        //update alarm cooloff timers and sound-threshold durations only every 2 seconds
+        //update alarm cooloff timers and sound-threshold durations only every 1 seconds
         if(quarterSeconds % 4 == 0){
             /*check if we need to activate time-based alarms, 
             monitor current alarms to see if they need to timeout and be reset */
-            monitorAlarms(2);
-            //update sound threshold counters "2" seconds after last update
-            updateSoundThresholdCounters(2);
+            monitorAlarms(1);
+            //update sound threshold counters "1" seconds after last update
+            updateSoundThresholdCounters(1);
         }
 
         //flash appropriate colour at appropriate interval for active alarm
         updateStatusLed();
 
         //test bluetooth
+        /*
         if (quarterSeconds % 8 == 0){
             uint16_t test = (uint16_t) quarterSeconds;
             fanSpeedCharacteristic.setValue(test);
             Log.info("%u", test);
         }
+        */
         //loop every 250ms, to allow 2Hz status LED flashing if necessary
         //subtract processing time from the delay to make intervals consistently sized
         delay(250 - (millis() - loopStart));
@@ -259,6 +320,59 @@ void loop() {
         lcd.setCursor(0, 1);
         // print the number of seconds since reset:
         lcd.print(millis()/1000);
+        
+        //Sensor logic for fan
+        if((getTempsn1 >= TEMPERATURE_THRESHOLDS[0])
+		&& (getTempsn1 <= TEMPERATURE_THRESHOLDS[1]))
+		{
+			if(getHumidsn1 >= HUMIDITY_THRESHOLD)
+			{
+                fanSpeedCharacteristic.setValue(fanspeed2);
+				//Measure power consumption
+			}
+			else
+			{
+                fanSpeedCharacteristic.setValue(fanspeed1);
+				//Measure power
+			}
+		}
+		else if(getTempsn1 < TEMPERATURE_THRESHOLDS[1])
+		{
+			//Turn off fan
+            fanSpeedCharacteristic.setValue(fanspeed0);
+		}
+		
+		if(getHumanDetectsn2 == 0x01)
+		{
+			if(getLightsn2 > ACTUATOR_LIGHT_THRESHOLDS[2])//400)
+			{
+				//Turn ON the LED light at 50% intensity level and measure the light’s power consumption and display
+                ledVoltageCharacteristic.setValue(ledVolt50);
+			}
+			else if(getLightsn2 < ACTUATOR_LIGHT_THRESHOLDS[1])//200)
+			{
+				//Turn ON the LED light at 100% intensity level and measure the light energy and display above.
+                ledVoltageCharacteristic.setValue(ledVolt100);
+			}
+			else if(
+			(getLightsn2 >= ACTUATOR_LIGHT_THRESHOLDS[1])//200)
+			&& (getLightsn2 <= ACTUATOR_LIGHT_THRESHOLDS[2])//400)
+			)
+			{
+				//Turn ON the LED light at 75% intensity level and measure the light energy and display above.
+                ledVoltageCharacteristic.setValue(ledVolt75);
+			}
+		}
+		if(getHumanDetectsn2 == 0x00)
+		{
+			
+			if(getLightsn2 < ACTUATOR_LIGHT_THRESHOLDS[0])//150)
+			{
+				//Turn ON the LED light at 30% intensity level
+                ledVoltageCharacteristic.setValue(ledVolt30);
+			}
+			
+		}
     }
     //if we haven't connected both, then scan for them
     else {
@@ -459,7 +573,8 @@ bool alarmCondtitionsMet(int alarmNumber){
         case 0:
             //Object movement detected within 25cms
             return (
-                currentDistance != 0 
+                moving
+                && currentDistance != 0 
                 && currentDistance <= DISTANCE_THRESHOLD
             );
         case 1:
@@ -521,9 +636,8 @@ void startAlarm(int alarmNumber){
 void resetAlarm(int alarmNumber){
     //check that alarmNumber is valid index
     if(alarmNumber >=0 && alarmNumber <= 3){
-        //record the time elapsed
-        long endTime = Time.local();
-        int eventDuration = endTime - alarmActivatedTimes[alarmNumber];
+        //calculate the time elapsed
+        int eventDuration = alarmEventEndedTimes[alarmNumber] - alarmActivatedTimes[alarmNumber];
 
         //alarm-specific logic
         uint8_t alarmSensorNodeId = 2; //the sensor node which the alarm originated from
@@ -567,6 +681,7 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
+    getTempsn1 = receivedTemp;
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -602,11 +717,13 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     memcpy(&byteValue, &data[0], sizeof(uint8_t));
     Log.info("Sensor 1 - Distance: %u cm", byteValue);
 
-    currentDistance = byteValue;
-    //activate alarm 0 if it's within 25cm threshold
+    //set 'moving' flag if it has changed by more than 1cm since last reading
+    moving = (abs(byteValue - currentDistance) > 1);
+    
     if(alarmCondtitionsMet(0)){
         startAlarm(0);
     }
+    currentDistance = byteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
