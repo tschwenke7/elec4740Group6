@@ -562,9 +562,8 @@ void startAlarm(int alarmNumber){
 void resetAlarm(int alarmNumber){
     //check that alarmNumber is valid index
     if(alarmNumber >=0 && alarmNumber <= 3){
-        //record the time elapsed
-        long endTime = Time.local();
-        int eventDuration = endTime - alarmActivatedTimes[alarmNumber];
+        //calculate the time elapsed
+        int eventDuration = alarmEventEndedTimes[i] - alarmActivatedTimes[alarmNumber];
 
         //alarm-specific logic
         uint8_t alarmSensorNodeId = 2; //the sensor node which the alarm originated from
