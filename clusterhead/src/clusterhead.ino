@@ -216,12 +216,12 @@ void loop() {
         //record start time of this loop
         loopStart = millis();
 
-        //update alarm cooloff timers and sound-threshold durations only every 2 seconds
+        //update alarm cooloff timers and sound-threshold durations only every 1 seconds
         if(quarterSeconds % 4 == 0){
             /*check if we need to activate time-based alarms, 
             monitor current alarms to see if they need to timeout and be reset */
             monitorAlarms(1);
-            //update sound threshold counters "2" seconds after last update
+            //update sound threshold counters "1" seconds after last update
             updateSoundThresholdCounters(1);
         }
 
