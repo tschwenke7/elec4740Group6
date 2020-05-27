@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 
 #include "Particle.h"
 #include "dct.h"
@@ -24,7 +24,7 @@ int8_t readTemperature();
 uint8_t readHumidity();
 uint16_t readCurrent();
 uint8_t readDistance();
-#line 14 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 14 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 DHT dht(D0);        //DHT for temperature/humidity 
 
 SYSTEM_MODE(AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
@@ -45,7 +45,7 @@ const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
 //Array of last recorded temperatures for short term averages
-int8_t tempArray[5];// = {-128, -128, -128, -128, -128};  //Assigns -128 to these at the start
+int8_t tempArray[5];
 int8_t tempAssigned = 0;                                //Tracks the number of assigned temperatures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
 int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array size for readability.
 
@@ -58,6 +58,10 @@ unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
 BleCharacteristic humiditySensorCharacteristic("humid",
 BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded humidity for short term averages
+int8_t humidityArray[5];
+int8_t humidityAssigned = 0;                                //Tracks the number of assigned humidity. When humidity assigned == humidityArray.length, it sends the humidity to the clusterhead.
+int8_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Holds array size for readability.
 
 /* Distance sensor variables */
 const int distanceTriggerPin = D2;  //pin reading input of sensor
@@ -172,6 +176,8 @@ void loop() {
 
                 //send bluetooth transmission
                 temperatureSensorCharacteristic.setValue(transmission);
+                //resets tempAssigned.
+                tempAssigned = 0;
             }
             else        //if the temperature array is not full, adds the last temperature to the end.
             {
@@ -227,22 +233,17 @@ void loop() {
 /** Function called whenver a value for fanSpeedCharacteristic is received via bluetooth.
  *  Updates the speed of the fan to the received value */
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the 2-byte value to set the fan pin adc to
-    uint16_t fanSpeed;
-    memcpy(&fanSpeed, &data[0], sizeof(uint16_t));
+    //read the byte value to set the fan pin adc to
+    uint8_t fanSpeed;
+    memcpy(&fanSpeed, &data[0], sizeof(uint8_t));
 
     if( (fanGetTime - fanStartTime) > fanInitTime)
     {
         Log.info("Fan Started!");
         //todo: Don't run for the first 0.1 second.
         Log.info("The fan power has been set via BT to %u", fanSpeed);
-        if(fanSpeed < 4095){
-            //set the PWM output to the fan
-            analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
-        }
-        else{
-            Log.info("Invalid fan power - should be less than 4095.");
-        }
+        //set the PWM output to the fan
+        analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
     } 
 }
 

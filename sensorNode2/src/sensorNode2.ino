@@ -227,18 +227,14 @@ void loop() {
  *  Updates the voltage supplied to the LED actuator to the received value */
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the 2-byte value to set the fan pin adc to
-    uint16_t ledVoltage;
-    memcpy(&ledVoltage, &data[0], sizeof(uint16_t));
+    uint8_t ledVoltage;
+    memcpy(&ledVoltage, &data[0], sizeof(uint8_t));
 
     Log.info("The LED voltage has been set via BT to %u", ledVoltage);
 
-    if(ledVoltage < 4095){
-        //set the PWM output to the LED
-        analogWrite(ledPin, ledVoltage, ledHz);
-    }
-    else{
-        Log.info("Invalid LED voltage - should be less than 4095.");
-    }
+    //set the PWM output to the LED
+    analogWrite(ledPin, ledVoltage, ledHz);
+
 }
 
 /** Returns the current temperature in microseconds */

@@ -219,22 +219,17 @@ void loop() {
 /** Function called whenver a value for fanSpeedCharacteristic is received via bluetooth.
  *  Updates the speed of the fan to the received value */
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the 2-byte value to set the fan pin adc to
-    uint16_t fanSpeed;
-    memcpy(&fanSpeed, &data[0], sizeof(uint16_t));
+    //read the byte value to set the fan pin adc to
+    uint8_t fanSpeed;
+    memcpy(&fanSpeed, &data[0], sizeof(uint8_t));
 
     if( (fanGetTime - fanStartTime) > fanInitTime)
     {
         Log.info("Fan Started!");
         //todo: Don't run for the first 0.1 second.
         Log.info("The fan power has been set via BT to %u", fanSpeed);
-        if(fanSpeed < 4095){
-            //set the PWM output to the fan
-            analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
-        }
-        else{
-            Log.info("Invalid fan power - should be less than 4095.");
-        }
+        //set the PWM output to the fan
+        analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
     } 
 }
 
