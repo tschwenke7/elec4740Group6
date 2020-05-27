@@ -31,7 +31,7 @@ const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
 //Array of last recorded temperatures for short term averages
-int8_t tempArray[5];// = {-128, -128, -128, -128, -128};  //Assigns -128 to these at the start
+int8_t tempArray[5];
 int8_t tempAssigned = 0;                                //Tracks the number of assigned temperatures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
 int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array size for readability.
 
@@ -44,6 +44,10 @@ unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
 BleCharacteristic humiditySensorCharacteristic("humid",
 BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded humidity for short term averages
+int8_t humidityArray[5];
+int8_t humidityAssigned = 0;                                //Tracks the number of assigned humidity. When humidity assigned == humidityArray.length, it sends the humidity to the clusterhead.
+int8_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Holds array size for readability.
 
 /* Distance sensor variables */
 const int distanceTriggerPin = D2;  //pin reading input of sensor

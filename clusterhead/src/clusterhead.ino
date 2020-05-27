@@ -30,7 +30,12 @@ int currentSound = 0;
 uint16_t currentLight = 0;
 uint8_t currentDistance = 0;
 
-//int16_t getTempsn1 = -999;
+//Gets temp and humidity from sn1, and light from sn2 for logic
+int16_t getTempsn1 = -999;
+int16_t getHumidsn1 = -1;
+
+int16_t getLightsn2 = -1;
+uint8_t getHumanDetectsn2 = 0x00;
 
 /* Alarm variables */
 //The active status of each of the 4 possible alarm conditions. True if active, false if inactive
@@ -55,6 +60,16 @@ uint16_t LIGHT_THRESHOLD = 100;
 int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
 //sound must continue for t0 seconds to trigger alarm 1, or t1 seconds for alarm 2
 uint16_t SOUND_DURATION_THRESHOLDS [2] = {30, 10};
+
+//values for fan speed and LED Voltage
+uint8_t fanspeed2 = 128;
+uint8_t fanspeed1 = 64;
+uint8_t fanspeed0 = 0;
+
+uint8_t ledVolt100 = 254;
+uint8_t ledVolt75 = 191;
+uint8_t ledVolt50 = 128;
+uint8_t ledVolt30 = 77;
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -214,11 +229,13 @@ void loop() {
         updateStatusLed();
 
         //test bluetooth
+        /*
         if (quarterSeconds % 8 == 0){
             uint16_t test = (uint16_t) quarterSeconds;
             fanSpeedCharacteristic.setValue(test);
             Log.info("%u", test);
         }
+        */
         //loop every 250ms, to allow 2Hz status LED flashing if necessary
         //subtract processing time from the delay to make intervals consistently sized
         delay(250 - (millis() - loopStart));
@@ -230,6 +247,59 @@ void loop() {
         lcd.setCursor(0, 1);
         // print the number of seconds since reset:
         lcd.print(millis()/1000);
+        
+        //Sensor logic for fan
+        if((getTempsn1 >= 20)
+		&& (getTempsn1 <= 24))
+		{
+			if(getHumidsn1 >= 60)
+			{
+                fanSpeedCharacteristic.setValue(fanspeed2);
+				//Measure power consumption
+			}
+			else
+			{
+                fanSpeedCharacteristic.setValue(fanspeed1);
+				//Measure power
+			}
+		}
+		else if(getTempsn1 < 24)
+		{
+			//Turn off fan
+            fanSpeedCharacteristic.setValue(fanspeed0);
+		}
+		
+		if(getHumanDetectsn2 == 0x01)
+		{
+			if(getLightsn2 > 400)
+			{
+				//Turn ON the LED light at 50% intensity level and measure the light’s power consumption and display
+                ledVoltageCharacteristic.setValue(ledVolt50);
+			}
+			else if(getLightsn2 < 200)
+			{
+				//Turn ON the LED light at 100% intensity level and measure the light energy and display above.
+                ledVoltageCharacteristic.setValue(ledVolt100);
+			}
+			else if(
+			(getLightsn2 >= 200)
+			&& (getLightsn2 <= 400)
+			)
+			{
+				//Turn ON the LED light at 75% intensity level and measure the light energy and display above.
+                ledVoltageCharacteristic.setValue(ledVolt75);
+			}
+		}
+		if(getHumanDetectsn2 == 0x00)
+		{
+			
+			if(getLightsn2 < 150)
+			{
+				//Turn ON the LED light at 30% intensity level
+                ledVoltageCharacteristic.setValue(ledVolt30);
+			}
+			
+		}
     }
     //if we haven't connected both, then scan for them
     else {
@@ -538,6 +608,7 @@ void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice
     
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
+    getTempsn1 = temperature;
     // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
