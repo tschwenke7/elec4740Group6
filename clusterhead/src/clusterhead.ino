@@ -220,9 +220,9 @@ void loop() {
         if(quarterSeconds % 4 == 0){
             /*check if we need to activate time-based alarms, 
             monitor current alarms to see if they need to timeout and be reset */
-            monitorAlarms(2);
+            monitorAlarms(1);
             //update sound threshold counters "2" seconds after last update
-            updateSoundThresholdCounters(2);
+            updateSoundThresholdCounters(1);
         }
 
         //flash appropriate colour at appropriate interval for active alarm
