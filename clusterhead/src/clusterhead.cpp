@@ -20,7 +20,7 @@
 int resetAlarmCloud(String alarmNumber);
 int setAlarmCooloffDelay(String delay);
 int setDistanceThreshold(String threshold);
-int setLightThreshold(String threshold);
+int setAlarmLightThreshold(String threshold);
 int setVolumeThresholds(String thresholds);
 int setSoundDurationThresholds(String thresholds);
 void setup();
@@ -79,7 +79,7 @@ uint16_t ALARM_COOLOFF_DELAY = 60;
 //alarm 0 will be triggered if an object is detected within this many centimetres
 uint16_t DISTANCE_THRESHOLD = 25;
 //light must go below this value of Lux to trigger alarms 1 or 2
-uint16_t LIGHT_THRESHOLD = 100;
+uint16_t ALARM_LIGHT_THRESHOLD = 100;
 //no alarm below t0, alarm 1 may trigger between t0-t1, alarm 2 between t1-t2, alarm 3 if > t2
 int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
 //sound must continue for t0 seconds to trigger alarm 1, or t1 seconds for alarm 2
@@ -151,9 +151,9 @@ int setDistanceThreshold(String threshold){
     return 1;
 }
 
-/* set LIGHT_THRESHOLD */
-int setLightThreshold(String threshold){
-    LIGHT_THRESHOLD = (uint16_t) threshold.toInt();
+/* set ALARM_LIGHT_THRESHOLD */
+int setAlarmLightThreshold(String threshold){
+    ALARM_LIGHT_THRESHOLD = (uint16_t) threshold.toInt();
     return 1;
 }
 
@@ -189,7 +189,7 @@ void setup() {
     Particle.function("resetAlarm",resetAlarmCloud);
     Particle.function("setAlarmCooloffDelay",setAlarmCooloffDelay);
     Particle.function("setDistanceThreshold",setDistanceThreshold);
-    Particle.function("setLightThreshold",setLightThreshold);
+    Particle.function("setAlarmLightThreshold",setAlarmLightThreshold);
     Particle.function("setVolumeThresholds",setVolumeThresholds);
     Particle.function("setSoundDurationThresholds",setSoundDurationThresholds);
 
@@ -375,7 +375,7 @@ void monitorAlarms(uint8_t secondsPassed){
  * @param secondsPassed: number of seconds since this was last called. */
 void updateSoundThresholdCounters(uint8_t secondsPassed){
     //only count up if light level is below threshold
-    if(currentLight < LIGHT_THRESHOLD){
+    if(currentLight < ALARM_LIGHT_THRESHOLD){
         if (currentSound > SOUND_VOLUME_THRESHOLDS[1]){
             durationAtSoundThresholds[1] += secondsPassed;//increment high volume counter
             durationAtSoundThresholds[0] += secondsPassed;//increment med volume counter
@@ -466,13 +466,13 @@ bool alarmCondtitionsMet(int alarmNumber){
             //Sound Level 55-70 dBA for 30 seconds, light level <100 lux and noise last for more than 30 sec
             return (
                 durationAtSoundThresholds[0] >= SOUND_DURATION_THRESHOLDS[0]
-                && currentLight < LIGHT_THRESHOLD
+                && currentLight < ALARM_LIGHT_THRESHOLD
             );
         case 2:
             //Sound level > 70 dBA for 10 seconds, light level < 100 lux and noise last for more than 10 sec
             return (
                 durationAtSoundThresholds[1] >= SOUND_DURATION_THRESHOLDS[1]
-                && currentLight < LIGHT_THRESHOLD
+                && currentLight < ALARM_LIGHT_THRESHOLD
             );
         case 3:
             //Sound level > 80 dBA
