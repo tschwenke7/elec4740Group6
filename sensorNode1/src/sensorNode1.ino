@@ -178,12 +178,40 @@ void loop() {
            
            //send bluetooth transmission
            humiditySensorCharacteristic.setValue(humidity);
+
+            if(humidityAssigned == humidityArraySize)
+            {
+                //1: calculates average
+                int8_t humidityAverage = 0;
+                for(int i = 0; i < humidityArraySize; i++)
+                {
+                    humidityAverage += humidityArray[i];
+                }
+                humidityAverage = (int8_t) humidityAverage / humidityArraySize;
+                //2: returns the average to the clusterhead.
+                //package together with send time in a buffer
+                uint8_t* transmission[9];
+                memcpy(transmission, &humidityAverage, sizeof(humidityAverage));
+
+                //record and append the sending time
+                uint64_t sendTime = getCurrentTime();
+                memcpy(transmission + sizeof(humidityAverage), &sendTime, sizeof(sendTime));
+
+                //send bluetooth transmission
+                humiditySensorCharacteristic.setValue(transmission);
+                //resets humidityAssigned.
+                humidityAssigned = 0;
+            }
+            else        //if the humidity array is not full, adds the last humidity to the end.
+            {
+                humidityArray[humidityAssigned] = humidity;
+                humidityAssigned++;
+            }
         }
         //distance
         if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
             lastDistanceUpdate = currentTime;
             uint8_t getValue = readDistance();
-
             //if distance remains 0 for multiple cycles, only send first 0 over bluetooth
             //this helps save power
             if(!(getValue == 0 && lastRecordedDistance == 0)){
@@ -200,7 +228,7 @@ void loop() {
                 Log.info("Distance transmitted.");
             }
         }
-        //current
+        //current   
         if(currentTime - lastCurrentUpdate >= CURRENT_READ_DELAY){
            lastCurrentUpdate = currentTime;
            uint16_t current = readCurrent();

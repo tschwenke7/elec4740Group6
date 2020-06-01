@@ -296,11 +296,14 @@ void loop() {
 			if(getHumidsn1 >= HUMIDITY_THRESHOLD)
 			{
                 fanSpeedCharacteristic.setValue(fanspeed2);
+                Log.info("Set fan speed 2");
+                
 				//Measure power consumption
 			}
 			else
 			{
                 fanSpeedCharacteristic.setValue(fanspeed1);
+                Log.info("Set fan speed 1");
 				//Measure power
 			}
 		}
@@ -308,6 +311,7 @@ void loop() {
 		{
 			//Turn off fan
             fanSpeedCharacteristic.setValue(fanspeed0);
+            //Log.info("Set fan speed 0");
 		}
 		
 		if(getHumanDetectsn2 == 0x01)
@@ -486,10 +490,12 @@ based on the values of "quarterSeconds" and "alarmActive[]".
 Priority: First active alarm in this list will control the status LED: alarm 0, 3, 2, 1 */
 void updateStatusLed(){
     //alarm 0 - Blue LED flashing, 0.5 Hz frequency
+    //Log.info("LED Status updated");
     if(alarmActive[0]){
         if(quarterSeconds % 8 == 0){
             //turn status light on blue
             RGB.color(0,0,255);
+            Log.info("Colour set to blue");
         }
         else if(quarterSeconds % 8 == 4){
             //turn status light off

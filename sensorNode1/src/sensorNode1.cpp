@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 
 #include "Particle.h"
 #include "dct.h"
@@ -24,7 +24,7 @@ int8_t readTemperature();
 uint8_t readHumidity();
 uint16_t readCurrent();
 uint8_t readDistance();
-#line 14 "c:/Users/tschw/repos/elec4740Group6/sensorNode1/src/sensorNode1.ino"
+#line 14 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 DHT dht(D0);        //DHT for temperature/humidity 
 
 SYSTEM_MODE(AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
@@ -196,8 +196,8 @@ void loop() {
         //distance
         if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
             lastDistanceUpdate = currentTime;
-            uint8_t getValue = readDistance();
-
+            //uint8_t getValue = readDistance();
+            uint8_t getValue = 15;  //Placeholder hardcoded value
             //if distance remains 0 for multiple cycles, only send first 0 over bluetooth
             //this helps save power
             if(!(getValue == 0 && lastRecordedDistance == 0)){

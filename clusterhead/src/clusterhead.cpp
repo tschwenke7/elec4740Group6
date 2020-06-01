@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
@@ -44,7 +44,7 @@ void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSoundReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 16 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 16 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -328,11 +328,14 @@ void loop() {
 			if(getHumidsn1 >= HUMIDITY_THRESHOLD)
 			{
                 fanSpeedCharacteristic.setValue(fanspeed2);
+                Log.info("Set fan speed 2");
+                
 				//Measure power consumption
 			}
 			else
 			{
                 fanSpeedCharacteristic.setValue(fanspeed1);
+                Log.info("Set fan speed 1");
 				//Measure power
 			}
 		}
@@ -340,6 +343,7 @@ void loop() {
 		{
 			//Turn off fan
             fanSpeedCharacteristic.setValue(fanspeed0);
+            //Log.info("Set fan speed 0");
 		}
 		
 		if(getHumanDetectsn2 == 0x01)
@@ -518,10 +522,12 @@ based on the values of "quarterSeconds" and "alarmActive[]".
 Priority: First active alarm in this list will control the status LED: alarm 0, 3, 2, 1 */
 void updateStatusLed(){
     //alarm 0 - Blue LED flashing, 0.5 Hz frequency
+    Log.info("LED Status updated");
     if(alarmActive[0]){
         if(quarterSeconds % 8 == 0){
             //turn status light on blue
             RGB.color(0,0,255);
+            Log.info("Colour set to blue");
         }
         else if(quarterSeconds % 8 == 4){
             //turn status light off
@@ -573,10 +579,17 @@ bool alarmCondtitionsMet(int alarmNumber){
         case 0:
             //Object movement detected within 25cms
             return (
+                //moving
+                currentDistance != 0 
+                && currentDistance <= DISTANCE_THRESHOLD
+            );
+            /*
+            return (
                 moving
                 && currentDistance != 0 
                 && currentDistance <= DISTANCE_THRESHOLD
             );
+            */
         case 1:
             //Sound Level 55-70 dBA for 30 seconds, light level <100 lux and noise last for more than 30 sec
             return (
