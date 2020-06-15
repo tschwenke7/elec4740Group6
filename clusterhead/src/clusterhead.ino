@@ -94,7 +94,7 @@ BleCharacteristic currentSensorCharacteristic1;
 BleCharacteristic fanSpeedCharacteristic;
 
 //for sensor node 2
-BleCharacteristic temperatureSensorCharacteristic2;
+BleCharacteristic rainsteamSensorCharacteristic2;
 BleCharacteristic lightSensorCharacteristic2;
 BleCharacteristic soundSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
@@ -239,7 +239,7 @@ void setup() {
     distanceSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
     currentSensorCharacteristic1.onDataReceived(onCurrentReceived1, NULL);
 
-    temperatureSensorCharacteristic2.onDataReceived(onTemperatureReceived2, NULL);
+    rainsteamSensorCharacteristic2.onDataReceived(onRainsteamReceived2, NULL);
     lightSensorCharacteristic2.onDataReceived(onLightReceived2, NULL);
     soundSensorCharacteristic.onDataReceived(onSoundReceived, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
@@ -394,7 +394,7 @@ void loop() {
                     if(sensorNode2.connected()){
                         Log.info("Successfully connected to sensor node 2!");
                         //map characteristics from this service to the variables in this program, so they're handled by our "on<X>Received" functions
-                        sensorNode2.getCharacteristicByUUID(temperatureSensorCharacteristic2, "bc7f18d9-2c43-408e-be25-62f40645987c");
+                        sensorNode2.getCharacteristicByUUID(rainsteamSensorCharacteristic2, "bc7f18d9-2c43-408e-be25-62f40645987c");
                         sensorNode2.getCharacteristicByUUID(lightSensorCharacteristic2, "ea5248a4-43cc-4198-a4aa-79200a750835");
                         sensorNode2.getCharacteristicByUUID(soundSensorCharacteristic, "88ba2f5d-1e98-49af-8697-d0516df03be9");
                         sensorNode2.getCharacteristicByUUID(humanDetectorCharacteristic, "b482d551-c3ae-4dde-b125-ce244d7896b0");
@@ -701,15 +701,15 @@ void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
-void onTemperatureReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    int8_t temperature;
+void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    int8_t rainsteam;
     uint64_t sentTime;
 
     //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(temperature), sizeof(sentTime));
+    memcpy(&sentTime, &data[0] + sizeof(rainsteam), sizeof(sentTime));
 
-    memcpy(&temperature, &data[0], sizeof(temperature));
-    Log.info("Sensor 2 - Temperature: %d degrees Celsius", temperature);
+    memcpy(&rainsteam, &data[0], sizeof(rainsteam));
+    Log.info("Sensor 2 - Temperature: %d degrees Celsius", rainsteam);
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 

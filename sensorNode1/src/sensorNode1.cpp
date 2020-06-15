@@ -52,7 +52,7 @@ int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array siz
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t HUMIDITY_READ_DELAY = 30000;
+const uint16_t HUMIDITY_READ_DELAY = 1000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
@@ -63,41 +63,25 @@ int8_t humidityArray[5];
 int8_t humidityAssigned = 0;                                //Tracks the number of assigned humidity. When humidity assigned == humidityArray.length, it sends the humidity to the clusterhead.
 int8_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Holds array size for readability.
 
-/* Distance sensor variables */
-const int distanceTriggerPin = D2;  //pin reading input of sensor
-const int distanceEchoPin = D3;     //pin reading output of sensor
-HC_SR04 rangefinder = HC_SR04(distanceTriggerPin, distanceEchoPin);
+/* Light sensor variables */
+const int lightPin = A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t DISTANCE_READ_DELAY = 1000;
-unsigned long lastDistanceUpdate = 0;//last absolute time a recording was taken
+const uint16_t LIGHT_READ_DELAY = 1000;
+unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
-const char* distanceSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
-BleCharacteristic distanceSensorCharacteristic("distance",
-BleCharacteristicProperty::NOTIFY, distanceSensorUuid, sensorNode1ServiceUuid);
-uint8_t lastRecordedDistance = 255;
+const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
+BleCharacteristic lightSensorCharacteristic("light",
+BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 
-/* Current sensor characteristic */
-const int currentSensorPin = -1; //TODO: update this
-const uint16_t CURRENT_READ_DELAY = 5000;//time between sampling current
-unsigned long lastCurrentUpdate = 0;
+/* Moisture sensor variables */
+const int moisturePin = A1; //pin reading output of sensor
+//duration in millis to wait between reads
+const uint16_t MOISTURE_READ_DELAY = 1000;
+unsigned long lastMoistureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
-const char* currentSensorUuid("2822a610-32d6-45e1-b9fb-247138fc8df7");
-BleCharacteristic currentSensorCharacteristic("current",
-BleCharacteristicProperty::NOTIFY, currentSensorUuid, sensorNode1ServiceUuid);
-
-/* Fan actuator characteristic */
-const int fanSpeedPin = -1; //TODO: update this
-const uint fanSpeedHz = 25000;
-
-bool fanTimeSet = false;
-long fanStartTime = -1;
-long fanGetTime = -1;
-int fanInitTime = 100;
-
-//advertised bluetooth characteristic
-const char* fanSpeedUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
-BleCharacteristic fanSpeedCharacteristic("fanSpeed",
-BleCharacteristicProperty::WRITE_WO_RSP, fanSpeedUuid, sensorNode1ServiceUuid, onDataReceived, NULL);
+const char* moistureSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
+BleCharacteristic moistureSensorCharacteristic("moisture",
+BleCharacteristicProperty::NOTIFY, moistureSensorUuid, sensorNode1ServiceUuid);
 
 /* Initial setup */
 void setup() {
@@ -112,8 +96,8 @@ void setup() {
     //add characteristics
     BLE.addCharacteristic(temperatureSensorCharacteristic);
     BLE.addCharacteristic(humiditySensorCharacteristic);
-    BLE.addCharacteristic(distanceSensorCharacteristic);
-    BLE.addCharacteristic(fanSpeedCharacteristic);
+    BLE.addCharacteristic(lightSensorCharacteristic);
+    BLE.addCharacteristic(moistureSensorCharacteristic);
 
     //data to be advertised
     BleAdvertisingData advData;
@@ -122,32 +106,19 @@ void setup() {
     // Continuously advertise when not connected to clusterhead
     Log.info("Start advertising");
     BLE.advertise(&advData);
-
-    //Initialises rangefinder
-    rangefinder.init();
     //setup fan pin as PWM output
-    pinMode(fanSpeedPin, OUTPUT);
+    //pinMode(fanSpeedPin, OUTPUT);
 
 }
 
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
-    if(BLE.connected()){
+    if(true){   //BLE.connected()){         //re-enable once clusterhead can connect to this sensor.
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
            A change in the characteristic will notify the connected cluster head
         */
-        //Sets fan current time and wait time.
-        if(fanTimeSet == false)
-        {
-            fanTimeSet = true;
-            fanStartTime = currentTime; //Stores start time since current time is constantly updating.
-        }
-        if(fanTimeSet == true)  //Assigns the fan get time to current time
-        {
-            fanGetTime = currentTime;
-        }
 
         //temperature and humidity
         if(currentTime - lastTemperatureUpdate >= TEMPERATURE_READ_DELAY){
@@ -184,6 +155,38 @@ void loop() {
                 tempArray[tempAssigned] = temp;
                 tempAssigned++;
             }
+        }
+        
+        //light
+        if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
+            lastLightUpdate = currentTime;
+            uint16_t getValue = readLight();
+
+            //store data in buffer
+            uint8_t* transmission[10];
+            memcpy(transmission, &getValue, sizeof(getValue));
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+            lightSensorCharacteristic.setValue(transmission);
+            Log.info("Light: %u", getValue);
+        }
+        
+        //Moisture
+        if(currentTime - lastMoisturepdate >= MOISTURE_READ_DELAY){
+            lastmoistureUpdate = currentTime;
+            uint16_t getValue = readMoisture();
+
+            //store data in buffer
+            uint8_t* transmission[10];
+            memcpy(transmission, &getValue, sizeof(getValue));
+            //record and append the sending time
+            uint64_t sendTime = getCurrentTime();
+            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
+
+            moistureSensorCharacteristic.setValue(transmission);
+            Log.info("moisture: %u", getValue);
         }
         //humidity
         if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
@@ -222,57 +225,12 @@ void loop() {
                 humidityAssigned++;
             }
         }
-        //distance
-        if(currentTime - lastDistanceUpdate >= DISTANCE_READ_DELAY){
-            lastDistanceUpdate = currentTime;
-            uint8_t getValue = readDistance();
-            //if distance remains 0 for multiple cycles, only send first 0 over bluetooth
-            //this helps save power
-            if(!(getValue == 0 && lastRecordedDistance == 0)){
-                //store data in buffer
-                uint8_t* transmission[9];
-                memcpy(transmission, &getValue, sizeof(getValue));
-                //record and append the sending time
-                uint64_t sendTime = getCurrentTime();
-                memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
-
-                //send bluetooth transmission
-                distanceSensorCharacteristic.setValue(transmission);
-                lastRecordedDistance = getValue;//update last recorded distance
-                Log.info("Distance transmitted.");
-            }
-        }
-        //current   
-        if(currentTime - lastCurrentUpdate >= CURRENT_READ_DELAY){
-           lastCurrentUpdate = currentTime;
-           uint16_t current = readCurrent();
-
-           //send bluetooth transmission
-           currentSensorCharacteristic.setValue(current);
-        }
         
         delay(100);
     }
     else{
         Log.info("not connected yet... ");
     }
-}
-
-/** Function called whenver a value for fanSpeedCharacteristic is received via bluetooth.
- *  Updates the speed of the fan to the received value */
-void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the byte value to set the fan pin adc to
-    uint8_t fanSpeed;
-    memcpy(&fanSpeed, &data[0], sizeof(uint8_t));
-
-    if( (fanGetTime - fanStartTime) > fanInitTime)
-    {
-        Log.info("Fan Started!");
-        //todo: Don't run for the first 0.1 second.
-        Log.info("The fan power has been set via BT to %u", fanSpeed);
-        //set the PWM output to the fan
-        analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
-    } 
 }
 
 /** Returns the current temperature in microseconds */
@@ -310,28 +268,39 @@ uint8_t readHumidity(){
     return  h;
 }
 
-/* Read the value on the current sensor pin */
-uint16_t readCurrent(){
-    //TODO: work out how to actually read this
 
-    //cloud data - can delete when not testing
-    char str[2];
-    sprintf(str, "%u", 0);
-	//Particle.publish("Current (not currently implemented)", str, PUBLIC);
+/* Read the value on the light sensor pin 
+Analogue pin generates 12 bits of data, so store as a 2-byte uint
+*/
+uint16_t readLight(){
+    //do any transformation logic we might want
+    uint16_t getL = analogRead(lightPin);
 
-    Log.info("Read current (not currently implemented): %u", 0);
-    return 0;
+    //cloud debug stuff - can delete after testing
+	char str[2];
+	sprintf(str, "%u", getL);
+	Particle.publish("light", str, PUBLIC);
+    
+    //convert to lux
+	uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
+    Log.info("Read light: %u lux", lux);
+    return lux;
 }
 
-/* Read the distance in centimetres*/
-uint8_t readDistance(){
-    uint8_t cms = (uint8_t) rangefinder.distCM();
-	Log.info("Read distance: %u", cms);
+/* Read the value on the moisture sensor pin 
+Analogue pin generates 12 bits of data, so store as a 2-byte uint
+*/
+uint16_t readMoisture(){
+    //do any transformation logic we might want
+    uint16_t getL = analogRead(moisturePin);
+
+    //cloud debug stuff - can delete after testing
+	char str[2];
+	sprintf(str, "%u", getL);
+	Particle.publish("moisture", str, PUBLIC);
     
-    //cloud data - can delete when not testing
-    char str[2];
-    sprintf(str, "%u", cms);
-	//Particle.publish("distance", str, PUBLIC);
-    
-    return cms;
+    //convert to lux
+	uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
+    Log.info("Read moisture: %u lux", lux);
+    return lux;
 }
