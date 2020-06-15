@@ -92,7 +92,7 @@ void setup() {
 
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
-    if(BLE.connected()){
+    if(true){   //BLE.connected()){
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
