@@ -271,7 +271,7 @@ void setup() {
     distanceSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
     currentSensorCharacteristic1.onDataReceived(onCurrentReceived1, NULL);
 
-    rainsteamSSensorCharacteristic2.onDataReceived(onRainsteamReceived2, NULL);
+    rainsteamSensorCharacteristic2.onDataReceived(onRainsteamReceived2, NULL);
     lightSensorCharacteristic2.onDataReceived(onLightReceived2, NULL);
     soundSensorCharacteristic.onDataReceived(onSoundReceived, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);

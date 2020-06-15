@@ -18,12 +18,12 @@
 
 void setup();
 void loop();
-void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 uint64_t getCurrentTime();
 int8_t readTemperature();
 uint8_t readHumidity();
 uint16_t readCurrent();
-uint8_t readDistance();
+uint16_t readLight();
+uint16_t readMoisture();
 #line 14 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 DHT dht(D0);        //DHT for temperature/humidity 
 
@@ -52,7 +52,7 @@ int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array siz
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t HUMIDITY_READ_DELAY = 1000;
+const uint16_t HUMIDITY_READ_DELAY = 30000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
@@ -62,6 +62,7 @@ BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
 int8_t humidityArray[5];
 int8_t humidityAssigned = 0;                                //Tracks the number of assigned humidity. When humidity assigned == humidityArray.length, it sends the humidity to the clusterhead.
 int8_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Holds array size for readability.
+
 
 /* Light sensor variables */
 const int lightPin = A2; //pin reading output of sensor
@@ -106,6 +107,9 @@ void setup() {
     // Continuously advertise when not connected to clusterhead
     Log.info("Start advertising");
     BLE.advertise(&advData);
+
+    //Initialises rangefinder
+    //rangefinder.init();
     //setup fan pin as PWM output
     //pinMode(fanSpeedPin, OUTPUT);
 
@@ -113,7 +117,7 @@ void setup() {
 
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
-    if(true){   //BLE.connected()){         //re-enable once clusterhead can connect to this sensor.
+    if(BLE.connected()){
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
@@ -174,8 +178,8 @@ void loop() {
         }
         
         //Moisture
-        if(currentTime - lastMoisturepdate >= MOISTURE_READ_DELAY){
-            lastmoistureUpdate = currentTime;
+        if(currentTime - lastMoistureUpdate >= MOISTURE_READ_DELAY){
+            lastMoistureUpdate = currentTime;
             uint16_t getValue = readMoisture();
 
             //store data in buffer
@@ -225,13 +229,31 @@ void loop() {
                 humidityAssigned++;
             }
         }
-        
         delay(100);
     }
     else{
         Log.info("not connected yet... ");
     }
 }
+
+/** Function called whenver a value for fanSpeedCharacteristic is received via bluetooth.
+ *  Updates the speed of the fan to the received value */
+/*
+void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the byte value to set the fan pin adc to
+    uint8_t fanSpeed;
+    memcpy(&fanSpeed, &data[0], sizeof(uint8_t));
+
+    if( (fanGetTime - fanStartTime) > fanInitTime)
+    {
+        Log.info("Fan Started!");
+        //todo: Don't run for the first 0.1 second.
+        Log.info("The fan power has been set via BT to %u", fanSpeed);
+        //set the PWM output to the fan
+        analogWrite(fanSpeedPin, fanSpeed, fanSpeedHz);
+    } 
+}
+*/
 
 /** Returns the current temperature in microseconds */
 uint64_t getCurrentTime(){
@@ -268,6 +290,18 @@ uint8_t readHumidity(){
     return  h;
 }
 
+/* Read the value on the current sensor pin */
+uint16_t readCurrent(){
+    //TODO: work out how to actually read this
+
+    //cloud data - can delete when not testing
+    char str[2];
+    sprintf(str, "%u", 0);
+	//Particle.publish("Current (not currently implemented)", str, PUBLIC);
+
+    Log.info("Read current (not currently implemented): %u", 0);
+    return 0;
+}
 
 /* Read the value on the light sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
