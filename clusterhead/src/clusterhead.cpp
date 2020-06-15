@@ -285,7 +285,7 @@ void setup() {
 
 void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected()){// && sensorNode2.connected()) {   //Add this back in when required!
+    if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
@@ -522,7 +522,7 @@ based on the values of "quarterSeconds" and "alarmActive[]".
 Priority: First active alarm in this list will control the status LED: alarm 0, 3, 2, 1 */
 void updateStatusLed(){
     //alarm 0 - Blue LED flashing, 0.5 Hz frequency
-    Log.info("LED Status updated");
+    //Log.info("LED Status updated");
     if(alarmActive[0]){
         if(quarterSeconds % 8 == 0){
             //turn status light on blue
@@ -579,17 +579,10 @@ bool alarmCondtitionsMet(int alarmNumber){
         case 0:
             //Object movement detected within 25cms
             return (
-                //moving
-                currentDistance != 0 
-                && currentDistance <= DISTANCE_THRESHOLD
-            );
-            /*
-            return (
                 moving
                 && currentDistance != 0 
                 && currentDistance <= DISTANCE_THRESHOLD
             );
-            */
         case 1:
             //Sound Level 55-70 dBA for 30 seconds, light level <100 lux and noise last for more than 30 sec
             return (

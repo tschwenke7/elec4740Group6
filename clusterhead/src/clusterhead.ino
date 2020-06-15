@@ -253,7 +253,7 @@ void setup() {
 
 void loop() { 
     //do stuff if both sensors have been connected
-    if (sensorNode1.connected()){// && sensorNode2.connected()) {   //Add this back in when required!
+    if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
