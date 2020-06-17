@@ -5,7 +5,7 @@
 
 /*
  * sensorNode2.ino
- * Description: code to flash to the "sensor node 2" argon for assignment 2
+ * Description: code to flash to the "sensor node 2" argon for assignment 3
  * Author: Tom Schwenke, Edward Ingle
  * Date: 20/05/2020
  */

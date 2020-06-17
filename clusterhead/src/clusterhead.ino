@@ -6,7 +6,7 @@
 #include <cstdlib>
 /*
  * clusterhead.ino
- * Description: code to flash to the "clusterhead" argon for assignment 1
+ * Description: code to flash to the "clusterhead" argon for assignment 3
  * Author: Tom Schwenke
  * Date: 07/05/2020
  */

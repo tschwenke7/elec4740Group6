@@ -10,7 +10,7 @@
 #include <chrono>
 /*
  * sensorNode1.ino
- * Description: code to flash to the "sensor node 1" argon for assignment 2
+ * Description: code to flash to the "sensor node 1" argon for assignment 3
  * Author: Tom Schwenke, Edward Ingle
  * Date: 20/05/2020
  */
@@ -38,51 +38,48 @@ const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 
 /*Temperature sensor variables */
 //duration in millis to wait between reads
-const uint16_t TEMPERATURE_READ_DELAY = 1000;
+const uint32_t TEMPERATURE_READ_DELAY =  300000;//1000; remember, this is milliseconds
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
-//Array of last recorded temperatures for short term averages
-int8_t tempArray[5];
-int8_t tempAssigned = 0;                                 //Tracks the number of assigned temperatures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
-int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array size for readability.
 
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint16_t HUMIDITY_READ_DELAY = 1000;
+const uint32_t HUMIDITY_READ_DELAY = 300000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
 BleCharacteristic humiditySensorCharacteristic("humid",
 BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
-//Array of last recorded humidity for short term averages
-int8_t humidityArray[5];
-int8_t humidityAssigned = 0;                                //Tracks the number of assigned humidity. When humidity assigned == humidityArray.length, it sends the humidity to the clusterhead.
-int8_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Holds array size for readability.
 
 
 /* Light sensor variables */
 const int lightPin = A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t LIGHT_READ_DELAY = 1000;
+const uint32_t LIGHT_READ_DELAY = 300000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
 BleCharacteristic lightSensorCharacteristic("light",
 BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 
-/* Moisture sensor variables */
+/* Soil Moisture sensor variables */
 const int moisturePin = A1; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t MOISTURE_READ_DELAY = 1000;
+const uint32_t MOISTURE_READ_DELAY_OVERALL = 900000;    //Overall moisture read delay
+const uint32_t MOISTURE_READ_DELAY = MOISTURE_READ_DELAY_OVERALL/6;     //Actual moisture read delay - reads average of every 6 readings.
 unsigned long lastMoistureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* moistureSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
 BleCharacteristic moistureSensorCharacteristic("moisture",
 BleCharacteristicProperty::NOTIFY, moistureSensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded moistures for short term averages
+int16_t moistureArray[6];
+int16_t moistureAssigned = 0;                                 //Tracks the number of assigned moistures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
+int16_t moistureArraySize = sizeof(moistureArray)/sizeof(moistureArray[0]); //Holds array size for readability.
 
 /* Solenoid actuator characteristic */
 const int solenoidPin = D4; 
@@ -216,6 +213,8 @@ void loop() {
             lastMoistureUpdate = currentTime;
             uint16_t getValue = readMoisture();
 
+
+            /*
             //store data in buffer
             uint8_t* transmission[10];
             memcpy(transmission, &getValue, sizeof(getValue));
@@ -225,6 +224,35 @@ void loop() {
 
             moistureSensorCharacteristic.setValue(transmission);
             Log.info("moisture: %u", getValue);
+            */
+            if(moistureAssigned == moistureArraySize)
+            {
+                //1: calculates average
+                int8_t moistureAverage = 0;
+                for(int i = 0; i < moistureArraySize; i++)
+                {
+                    moistureAverage += moistureArray[i];
+                }
+                moistureAverage = (uint16_t) moistureAverage / moistureArraySize;
+                //2: returns the average to the clusterhead.
+                //package together with send time in a buffer
+                uint8_t* transmission[9];
+                memcpy(transmission, &moistureAverage, sizeof(moistureAverage));
+
+                //record and append the sending time
+                uint64_t sendTime = getCurrentTime();
+                memcpy(transmission + sizeof(moistureAverage), &sendTime, sizeof(sendTime));
+
+                //send bluetooth transmission
+                temperatureSensorCharacteristic.setValue(transmission);
+                //resets tempAssigned.
+                moistureAssigned = 0;
+            }
+            else        //if the temperature array is not full, adds the last temperature to the end.
+            {
+                moistureArray[moistureAssigned] = getValue;
+                moistureAssigned++;
+            }
         }
         //humidity
         if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
@@ -259,7 +287,7 @@ void loop() {
             //send bluetooth transmission
             humiditySensorCharacteristic.setValue(transmission);
             //resets humidityAssigned.
-            humidityAssigned = 0;
+            //humidityAssigned = 0;
                 /*
             }
             else        //if the humidity array is not full, adds the last humidity to the end.
