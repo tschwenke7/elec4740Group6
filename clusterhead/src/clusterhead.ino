@@ -17,14 +17,6 @@ SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
-/* Control variables */
-/* Number of quarter-seconds which have passed during the current 2 second cycle
- * of the main loop. Used to activate flasing lights at different intervals of quarter seconds.
- * May eventually overflow, but that's ok cause loop only uses modulo math*/
-uint32_t quarterSeconds = 0;
-/* holds the starting millis of this execution of the main loop, 
-so we can work out how long to wait before beginning the next loop */
-unsigned long loopStart = 0;
 
 /* Data tracking variables */
 int currentSound = 0;
@@ -38,45 +30,8 @@ int8_t getHumidsn1 = -1;
 int16_t getLightsn2 = -1;
 uint8_t getHumanDetectsn2 = 0x00;
 
-/* Alarm variables */
-//The active status of each of the 4 possible alarm conditions. True if active, false if inactive
-bool alarmActive [4] = {false, false, false, false};
-/* The absolute time in seconds each of the 4 alarms was activated.*/
-long long alarmActivatedTimes[4] = {0,0,0,0};
-/* The absolute time in seconds each of the 4 alarms stopped being triggered.*/
-long long alarmEventEndedTimes[4] = {0,0,0,0};
-//number of seconds since each alarm stopped being triggered. If one reaches ALARM_COOLOFF_DELAY, reset that alarm
-uint16_t alarmCooloffCounters [4] = {0, 0, 0, 0};
-//how many seconds has the sound been at a level which can trigger t0=alarm1 or t1=alarm2?
-unsigned long durationAtSoundThresholds[2] = {0, 0};
 //true if the difference between the last two distance readings was more than 1cm
 bool moving = false;
-
-/* USER CONFIGURABLE VARIABLES */
-//after this number of seconds without another alarm-worthy event, the alarm will automatically reset.
-uint16_t ALARM_COOLOFF_DELAY = 60;
-//alarm 0 will be triggered if an object is detected within this many centimetres
-uint16_t DISTANCE_THRESHOLD = 25;
-//light must go below this value of Lux to trigger alarms 1 or 2
-uint16_t ALARM_LIGHT_THRESHOLD = 100;
-//no alarm below t0, alarm 1 may trigger between t0-t1, alarm 2 between t1-t2, alarm 3 if > t2
-int16_t SOUND_VOLUME_THRESHOLDS [3] = {55, 70, 80};
-//sound must continue for t0 seconds to trigger alarm 1, or t1 seconds for alarm 2
-uint16_t SOUND_DURATION_THRESHOLDS [2] = {30, 10};
-
-int8_t TEMPERATURE_THRESHOLDS [2] = {20, 24};
-uint16_t ACTUATOR_LIGHT_THRESHOLDS[3] = {150, 200, 400};
-uint8_t HUMIDITY_THRESHOLD = 60;
-
-//values for fan speed and LED Voltage
-uint8_t fanspeed2 = 128;
-uint8_t fanspeed1 = 64;
-uint8_t fanspeed0 = 0;
-
-uint8_t ledVolt100 = 254;
-uint8_t ledVolt75 = 191;
-uint8_t ledVolt50 = 128;
-uint8_t ledVolt30 = 77;
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -87,144 +42,24 @@ BleUuid sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 
 //characteristics we want to track
 //for sensor node 1
-BleCharacteristic temperatureSensorCharacteristic1;
+BleCharacteristic temperatureSensorCharacteristic;
 BleCharacteristic humiditySensorCharacteristic;
-BleCharacteristic distanceSensorCharacteristic;
-BleCharacteristic currentSensorCharacteristic1;
-BleCharacteristic fanSpeedCharacteristic;
+BleCharacteristic lightSensorCharacteristic;
+BleCharacteristic moistureSensorCharacteristic;
+BleCharacteristic solenoidVoltageCharacteristic;
 
 //for sensor node 2
 BleCharacteristic rainsteamSensorCharacteristic2;
-BleCharacteristic lightSensorCharacteristic2;
-BleCharacteristic soundSensorCharacteristic;
+BleCharacteristic liquidSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
-BleCharacteristic currentSensorCharacteristic2;
-BleCharacteristic ledVoltageCharacteristic;
-
-
-//Variables for LCD display
-LiquidCrystal lcd(D0, D1, D2, D3, D4, D5);  
+BleCharacteristic solenoidVoltageCharacteristic;
 
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
-/* Particle Cloud functions */
-/* Reset one or all alarms */
-int resetAlarmCloud(String alarmNumber){
-    //reset all alarms if input is "all"
-    if(alarmNumber.equalsIgnoreCase("all") == 0){
-        for(int i = 0; i < 4; i++){
-            if(alarmActive[i]){
-                resetAlarm(i);
-            }
-        }
-        return 1;
-    }
-    //otherwise only reset the alarm number provided
-    else {
-        int i = alarmNumber.toInt();
-        if(alarmActive[i]){
-            resetAlarm(i);
-        }
-        return 1;
-    }
-}
-
-/* set ALARM_COOLOFF_DELAY */
-int setAlarmCooloffDelay(String delay){
-    ALARM_COOLOFF_DELAY = (uint16_t) delay.toInt();
-    return 1;
-}
-
-/* set DISTANCE_THRESHOLD */
-int setDistanceThreshold(String threshold){
-    DISTANCE_THRESHOLD = (uint16_t) threshold.toInt();
-    return 1;
-}
-
-/* set ALARM_LIGHT_THRESHOLD */
-int setAlarmLightThreshold(String threshold){
-    ALARM_LIGHT_THRESHOLD = (uint16_t) threshold.toInt();
-    return 1;
-}
-
-/* set SOUND_VOLUME_THRESHOLDS based on comma-separated string of 3 numbers */
-int setVolumeThresholds(String thresholds){
-    String delimiter = ",";
-    uint8_t pos = 0;
-    int i = 0;
-    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
-        SOUND_VOLUME_THRESHOLDS[i] = (uint16_t) thresholds.substring(0, pos).toInt();
-        thresholds.remove(0, pos + delimiter.length());
-        i++;
-    }
-    return 1;
-}
-
-/* set SOUND_DURATION_THRESHOLDS based on comma-separated string of 3 numbers */
-int setSoundDurationThresholds(String thresholds){
-    String delimiter = ",";
-    uint8_t pos = 0;
-    int i = 0;
-    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
-        SOUND_DURATION_THRESHOLDS[i] = (uint16_t) thresholds.substring(0, pos).toInt();
-        thresholds.remove(0, pos + delimiter.length());
-        i++;
-    }
-    return 1;  
-}
-
-/* set TEMPERATURE_THRESHOLDS based on comma-separated string of 2 numbers */
-int setTemperatureThresholds(String thresholds){
-    String delimiter = ",";
-    uint8_t pos = 0;
-    int i = 0;
-    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
-        TEMPERATURE_THRESHOLDS[i] = (int8_t) thresholds.substring(0, pos).toInt();
-        thresholds.remove(0, pos + delimiter.length());
-        i++;
-    }
-    return 1; 
-}
-
-/* set ACTUATOR_LIGHT_THRESHOLDS based on comma-separated string of 3 numbers */
-int setActuatorLightThresholds(String thresholds){
-    String delimiter = ",";
-    uint8_t pos = 0;
-    int i = 0;
-    while ((pos = thresholds.indexOf(delimiter)) != std::string::npos) {
-        ACTUATOR_LIGHT_THRESHOLDS[i] = (uint16_t) thresholds.substring(0, pos).toInt();
-        thresholds.remove(0, pos + delimiter.length());
-        i++;
-    }
-    return 1;  
-}
-
-/* set HUMIDITY_THRESHOLD */
-int setHumidityThreshold(String threshold){
-    HUMIDITY_THRESHOLD = (uint8_t) threshold.toInt();
-    return 1;
-}
-
-
 void setup() {
-    //initialise Particle Cloud functions
-    Particle.function("resetAlarm",resetAlarmCloud);
-    Particle.function("setAlarmCooloffDelay",setAlarmCooloffDelay);
-    Particle.function("setDistanceThreshold",setDistanceThreshold);
-    Particle.function("setAlarmLightThreshold",setAlarmLightThreshold);
-    Particle.function("setVolumeThresholds",setVolumeThresholds);
-    Particle.function("setTemperatureThresholds",setTemperatureThresholds);
-    Particle.function("setActuatorLightThresholds",setActuatorLightThresholds);
-    Particle.function("setHumidityThreshold",setHumidityThreshold);
-
-    //take control of the onboard RGB LED
-    RGB.control(true);
-
-    //change timezone to aedt (UTC + 11)
-    Time.zone(11);
 
     const uint8_t val = 0x01;
     dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
@@ -234,16 +69,15 @@ void setup() {
     
     
     //map functions to be called whenever new data is received for a characteristic
-    temperatureSensorCharacteristic1.onDataReceived(onTemperatureReceived1, NULL);
+    temperatureSensorCharacteristic.onDataReceived(onTemperatureReceived1, NULL);
     humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
-    distanceSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
-    currentSensorCharacteristic1.onDataReceived(onCurrentReceived1, NULL);
+    lightSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
+    moistureSensorCharacteristic.onDataReceived(onCurrentReceived1, NULL);
 
     rainsteamSensorCharacteristic2.onDataReceived(onRainsteamReceived2, NULL);
-    lightSensorCharacteristic2.onDataReceived(onLightReceived2, NULL);
-    soundSensorCharacteristic.onDataReceived(onSoundReceived, NULL);
+    liquidSensorCharacteristic.onDataReceived(onLightReceived2, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
-    currentSensorCharacteristic2.onDataReceived(onCurrentReceived2, NULL);
+    solenoidVoltageCharacteristic.onDataReceived(onCurrentReceived2, NULL);
 
     // set up the LCD's number of columns and rows: 
     lcd.begin(16,2);

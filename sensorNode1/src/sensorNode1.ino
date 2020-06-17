@@ -65,14 +65,6 @@ BleCharacteristicProperty::NOTIFY, moistureSensorUuid, sensorNode1ServiceUuid);
 int16_t moistureArray[6];
 int16_t moistureAssigned = 0;                                 //Tracks the number of assigned moistures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
 int16_t moistureArraySize = sizeof(moistureArray)/sizeof(moistureArray[0]); //Holds array size for readability.
-
-/* Solenoid actuator characteristic */
-const int solenoidPin = D4; 
-//advertised bluetooth characteristic
-const char* solenoidVoltageUuid("97017674-9615-4fba-9712-6829f2045836");
-BleCharacteristic solenoidVoltageCharacteristic("ledVoltage",
-BleCharacteristicProperty::WRITE_WO_RSP, solenoidVoltageUuid, sensorNode1ServiceUuid, onDataReceived);
-
 /* Initial setup */
 void setup() {
     const uint8_t val = 0x01;
@@ -88,7 +80,6 @@ void setup() {
     BLE.addCharacteristic(humiditySensorCharacteristic);
     BLE.addCharacteristic(lightSensorCharacteristic);
     BLE.addCharacteristic(moistureSensorCharacteristic);
-    BLE.addCharacteristic(solenoidVoltageCharacteristic);
 
     //data to be advertised
     BleAdvertisingData advData;
@@ -102,15 +93,11 @@ void setup() {
     //rangefinder.init();
     //setup fan pin as PWM output
     //pinMode(fanSpeedPin, OUTPUT);
-    pinMode(solenoidPin, OUTPUT);
 }
 
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
     if(true){   //BLE.connected()){
-
-        digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
-
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
