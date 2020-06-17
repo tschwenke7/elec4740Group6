@@ -26,7 +26,7 @@ const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 const uint32_t TEMPERATURE_READ_DELAY =  300000;//1000; remember, this is milliseconds
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
-const char* temperatureSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
+const char* temperatureSensorUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
 
@@ -47,7 +47,7 @@ const int lightPin = A2; //pin reading output of sensor
 const uint32_t LIGHT_READ_DELAY = 300000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
-const char* lightSensorUuid("ea5248a4-43cc-4198-a4aa-79200a750835");
+const char* lightSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
 BleCharacteristic lightSensorCharacteristic("light",
 BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 
