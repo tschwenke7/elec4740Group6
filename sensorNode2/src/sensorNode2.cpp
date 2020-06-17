@@ -24,7 +24,7 @@ uint16_t readLiquid();
 uint8_t readHumanDetector();
 uint16_t readCurrent();
 #line 13 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode2/src/sensorNode2.ino"
-SYSTEM_MODE(AUTOMATIC);     //In automatic mode so it can connect to cloud
+SYSTEM_MODE(SEMI_AUTOMATIC);     //In automatic mode so it can connect to cloud
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -64,6 +64,13 @@ BleCharacteristic humanDetectorCharacteristic("pir",
 BleCharacteristicProperty::NOTIFY, humanDetectorUuid, sensorNode2ServiceUuid);
 uint8_t lastHumandDetectorValue = 0;
 
+/* Solenoid actuator characteristic */
+const int solenoidPin = D4; 
+//advertised bluetooth characteristic
+const char* solenoidVoltageUuid("97017674-9615-4fba-9712-6829f2045836");
+BleCharacteristic solenoidVoltageCharacteristic("ledVoltage",
+BleCharacteristicProperty::WRITE_WO_RSP, solenoidVoltageUuid, sensorNode2ServiceUuid, onDataReceived);
+
 
 /*debug variables */
 double rainsteamCloud = 0;
@@ -90,6 +97,7 @@ void setup() {
     BLE.addCharacteristic(rainsteamSensorCharacteristic);
     BLE.addCharacteristic(liquidSensorCharacteristic);
     BLE.addCharacteristic(humanDetectorCharacteristic);
+    BLE.addCharacteristic(solenoidVoltageCharacteristic);
 
     //data to be advertised
     BleAdvertisingData advData;
@@ -102,11 +110,15 @@ void setup() {
     //configure pins for input/output
     pinMode(humanDetectorPin, INPUT);
     //pinMode(ledPin, OUTPUT);
+    pinMode(solenoidPin, OUTPUT);
 }
 
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
     if(true){   //BLE.connected()){
+
+        digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
+
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
@@ -217,10 +229,11 @@ int8_t readRainsteamAna(){
 	Particle.publish("Rainsteam Analog", str, PUBLIC);
 	
     //convert pin value to celsius
-	int8_t degC = (int8_t) t*0.08 - 273;
-    Log.info("Read Rainsteam Analog: %d degrees celsius", degC);
+	//int8_t degC = (int8_t) t*0.08 - 273;
+    Log.info("Read Rainsteam Analog: %d raw output, not degrees celsius", t);
 
-	return degC;
+	//return degC;
+    return t;
 }
 
 /* Read the value on the liquid sensor pin 
@@ -266,3 +279,18 @@ uint16_t readCurrent(){
     Log.info("Read current (not currently implemented): %u", current);
     return current;
 }
+
+/** Function called whenver a value for solenoidVoltageCharacteristic is received via bluetooth.
+ *  Updates the voltage supplied to the LED actuator to the received value */
+/*
+void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the 2-byte value to set the fan pin adc to
+    uint8_t solenoidVoltage;
+    memcpy(&solenoidVoltage, &data[0], sizeof(uint8_t));
+
+    Log.info("The LED voltage has been set via BT to %u", solenoidVoltage);
+
+    //set the PWM output to the LED
+    //analogWrite(solenoidPin, ledVoltage, ledHz);
+}
+*/

@@ -12,7 +12,7 @@
 
 DHT dht(D0);        //DHT for temperature/humidity 
 
-SYSTEM_MODE(AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
+SYSTEM_MODE(SEMI_AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -31,7 +31,7 @@ BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
 //Array of last recorded temperatures for short term averages
 int8_t tempArray[5];
-int8_t tempAssigned = 0;                                //Tracks the number of assigned temperatures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
+int8_t tempAssigned = 0;                                 //Tracks the number of assigned temperatures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
 int8_t tempArraySize = sizeof(tempArray)/sizeof(tempArray[0]); //Holds array size for readability.
 
 /*Humidity sensor variables */
@@ -359,9 +359,10 @@ uint16_t readMoisture(){
 	Particle.publish("moisture", str, PUBLIC);
     
     //convert to lux
-	uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
-    Log.info("Read moisture: %u lux", lux);
-    return lux;
+	//uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
+    Log.info("Read moisture: %u", getL);
+    //return lux;
+    return getL;
 }
 
 /** Function called whenver a value for ledVoltageCharacteristic is received via bluetooth.
