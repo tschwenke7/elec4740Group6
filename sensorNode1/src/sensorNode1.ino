@@ -23,7 +23,7 @@ const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 
 /*Temperature sensor variables */
 //duration in millis to wait between reads
-const uint32_t TEMPERATURE_READ_DELAY =  300000;//1000; remember, this is milliseconds
+const uint32_t TEMPERATURE_READ_DELAY =  1000;//300000;//1000; remember, this is milliseconds
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* temperatureSensorUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
@@ -33,7 +33,7 @@ BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint32_t HUMIDITY_READ_DELAY = 300000;
+const uint32_t HUMIDITY_READ_DELAY = 1000;//300000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
@@ -44,7 +44,7 @@ BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
 /* Light sensor variables */
 const int lightPin = A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint32_t LIGHT_READ_DELAY = 300000;
+const uint32_t LIGHT_READ_DELAY =  1000;// 300000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* lightSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
@@ -54,7 +54,7 @@ BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
 /* Soil Moisture sensor variables */
 const int moisturePin = A1; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint32_t MOISTURE_READ_DELAY_OVERALL = 900000;    //Overall moisture read delay
+const uint32_t MOISTURE_READ_DELAY_OVERALL =   6000;//900000;    //Overall moisture read delay
 const uint32_t MOISTURE_READ_DELAY = MOISTURE_READ_DELAY_OVERALL/6;     //Actual moisture read delay - reads average of every 6 readings.
 unsigned long lastMoistureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
@@ -110,16 +110,6 @@ void loop() {
             lastTemperatureUpdate = currentTime;
             //read temp
             int8_t temp = readTemperature();
-            /*
-            //1: calculates average
-            int8_t tempAverage = 0;
-            for(int i = 0; i < tempArraySize; i++)
-            {
-                tempAverage += tempArray[i];
-            }
-            tempAverage = (int8_t) tempAverage / tempArraySize;
-            */
-            //2: returns the average to the clusterhead.
             //package together with send time in a buffer
             uint8_t* transmission[9];
             //memcpy(transmission, &tempAverage, sizeof(tempAverage));
@@ -131,37 +121,6 @@ void loop() {
 
             //send bluetooth transmission
             temperatureSensorCharacteristic.setValue(transmission);
-
-            /*
-            if(tempAssigned == tempArraySize)
-            {
-                //1: calculates average
-                int8_t tempAverage = 0;
-                for(int i = 0; i < tempArraySize; i++)
-                {
-                    tempAverage += tempArray[i];
-                }
-                tempAverage = (int8_t) tempAverage / tempArraySize;
-                //2: returns the average to the clusterhead.
-                //package together with send time in a buffer
-                uint8_t* transmission[9];
-                memcpy(transmission, &tempAverage, sizeof(tempAverage));
-
-                //record and append the sending time
-                uint64_t sendTime = getCurrentTime();
-                memcpy(transmission + sizeof(tempAverage), &sendTime, sizeof(sendTime));
-
-                //send bluetooth transmission
-                temperatureSensorCharacteristic.setValue(transmission);
-                //resets tempAssigned.
-                tempAssigned = 0;
-            }
-            else        //if the temperature array is not full, adds the last temperature to the end.
-            {
-                tempArray[tempAssigned] = temp;
-                tempAssigned++;
-            }
-            */
         }
         
         //light
@@ -177,7 +136,6 @@ void loop() {
             memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
 
             lightSensorCharacteristic.setValue(transmission);
-            Log.info("Light: %u", getValue);
         }
         
         //Moisture
@@ -306,6 +264,7 @@ uint64_t getCurrentTime(){
 int8_t readTemperature(){
     // Read temperature as Celsius
 	int8_t t = (int8_t) dht.getTempCelcius();   //Normally returns float
+    
     Log.info("Read temperature: %u", t);
 
     //cloud data - can delete when not testing
@@ -328,19 +287,6 @@ uint8_t readHumidity(){
 	//Particle.publish("humidity", str, PUBLIC);
 
     return  h;
-}
-
-/* Read the value on the current sensor pin */
-uint16_t readCurrent(){
-    //TODO: work out how to actually read this
-
-    //cloud data - can delete when not testing
-    char str[2];
-    sprintf(str, "%u", 0);
-	//Particle.publish("Current (not currently implemented)", str, PUBLIC);
-
-    Log.info("Read current (not currently implemented): %u", 0);
-    return 0;
 }
 
 /* Read the value on the light sensor pin 
@@ -378,17 +324,4 @@ uint16_t readMoisture(){
     Log.info("Read moisture: %u", getL);
     //return lux;
     return getL;
-}
-
-/** Function called whenver a value for ledVoltageCharacteristic is received via bluetooth.
- *  Updates the voltage supplied to the LED actuator to the received value */
-void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the 2-byte value to set the fan pin adc to
-    uint8_t ledVoltage;
-    memcpy(&ledVoltage, &data[0], sizeof(uint8_t));
-
-    Log.info("The LED voltage has been set via BT to %u", ledVoltage);
-
-    //set the PWM output to the LED
-    //analogWrite(solenoidPin, ledVoltage, ledHz);
 }

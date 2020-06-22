@@ -10,7 +10,7 @@
 
 /*
  * sensorNode2.ino
- * Description: code to flash to the "sensor node 2" argon for assignment 2
+ * Description: code to flash to the "sensor node 2" argon for assignment 3
  * Author: Tom Schwenke, Edward Ingle
  * Date: 20/05/2020
  */
@@ -22,7 +22,7 @@ uint64_t getCurrentTime();
 int8_t readRainsteamAna();
 uint16_t readLiquid();
 uint8_t readHumanDetector();
-uint16_t readCurrent();
+void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 #line 13 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode2/src/sensorNode2.ino"
 SYSTEM_MODE(SEMI_AUTOMATIC);     //In automatic mode so it can connect to cloud
 
@@ -70,7 +70,7 @@ const int solenoidPin = D4;
 const char* solenoidVoltageUuid("97017674-9615-4fba-9712-6829f2045836");
 BleCharacteristic solenoidVoltageCharacteristic("ledVoltage",
 BleCharacteristicProperty::WRITE_WO_RSP, solenoidVoltageUuid, sensorNode2ServiceUuid, onDataReceived);
-
+bool solenoidIsOn = false;  //True if solenoid is turned on, false otherwise.
 
 /*debug variables */
 double rainsteamCloud = 0;
@@ -116,9 +116,14 @@ void setup() {
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
     if(true){   //BLE.connected()){
-
-        digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
-
+        if(solenoidIsOn)
+        {
+            digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
+        }
+        else
+        {
+            digitalWrite(solenoidPin, LOW);
+        }
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
@@ -128,7 +133,7 @@ void loop() {
         if(currentTime - lastRainsteamUpdate >= RAINSTEAM_READ_DELAY){
             lastRainsteamUpdate = currentTime;
             int8_t getValue = readRainsteamAna();
-            rainsteamSensorCharacteristic.setValue(getValue);
+            //rainsteamSensorCharacteristic.setValue(getValue);
 
             //store data in buffer
             uint8_t* transmission[9];
@@ -266,31 +271,22 @@ uint8_t readHumanDetector(){
     return (uint8_t) state;
 }
 
-/* Read the value on the current sensor pin */
-uint16_t readCurrent(){
-    //TODO: work out how to actually read this
-    uint16_t current = 0;
-
-    //cloud data - can delete when not testing
-    char str[2];
-    sprintf(str, "%u", current);
-	Particle.publish("Current (not currently implemented)", str, PUBLIC);
-
-    Log.info("Read current (not currently implemented): %u", current);
-    return current;
-}
-
 /** Function called whenver a value for solenoidVoltageCharacteristic is received via bluetooth.
  *  Updates the voltage supplied to the LED actuator to the received value */
-/*
+
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the 2-byte value to set the fan pin adc to
     uint8_t solenoidVoltage;
     memcpy(&solenoidVoltage, &data[0], sizeof(uint8_t));
 
-    Log.info("The LED voltage has been set via BT to %u", solenoidVoltage);
-
-    //set the PWM output to the LED
-    //analogWrite(solenoidPin, ledVoltage, ledHz);
+    Log.info("Solenoid updated via bluetooth to %u", solenoidVoltage);
+    //Should be 0 to turn off, 1 to turn on.
+    if(solenoidVoltage == 1)
+    {
+        solenoidIsOn = true;
+    }
+    else
+    {
+        solenoidIsOn = false;   //Turns it off in all other cases.
+    }
 }
-*/

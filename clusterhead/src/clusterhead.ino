@@ -56,6 +56,9 @@ BleCharacteristic liquidSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
 BleCharacteristic solenoidVoltageCharacteristic;
 
+//Sensor logic
+bool isWatering = false;    //Is the solenoid active or not?
+
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
@@ -89,6 +92,18 @@ void loop() {
         //record start time of this loop
         loopStart = millis();
         
+        //Sensor logic for watering
+        if(isWatering == false)
+        {
+            solenoidVoltageCharacteristic.setValue(0);
+        }
+        if(isWatering == true)
+        {
+            solenoidVoltageCharacteristic.setValue(1);
+            //Sends true to the solenoid
+            //solenoidVoltageCharacteristic.setValue(true);
+
+        }
     }
     //if we haven't connected both, then scan for them
     else {
