@@ -72,7 +72,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 //MQTT client used to publish MQTT messages
 MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
 
-
 void setup() {
 
     bool connected = client.connect("elec4740g6publisher");
@@ -99,7 +98,7 @@ void setup() {
     rainsteamSensorCharacteristic.onDataReceived(onRainsteamReceived2, NULL);
     liquidSensorCharacteristic.onDataReceived(onLightReceived2, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
-    solenoidVoltageCharacteristic.onDataReceived(onCurrentReceived2, NULL);
+    solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived2, NULL);
 
 }
 
@@ -226,6 +225,14 @@ void onCurrentReceived1(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Current: %u Amps", twoByteValue);
 }
 
+void onSolenoidReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the current sensor reading
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    
+    Log.info("Sensor 2 - Solenoid: %u ", twoByteValue);
+}
+
 void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the current sensor reading
     uint16_t twoByteValue;
@@ -259,7 +266,7 @@ void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& 
     memcpy(&sentTime, &data[0] + sizeof(rainsteam), sizeof(sentTime));
 
     memcpy(&rainsteam, &data[0], sizeof(rainsteam));
-    Log.info("Sensor 2 - Temperature: %d degrees Celsius", rainsteam);
+    Log.info("Sensor 2 - Rainsteam: %d ", rainsteam);
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -271,7 +278,7 @@ void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer
     memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
+    Log.info("Sensor 2 - Liquid: %u ", twoByteValue);
 
     currentLight = twoByteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));

@@ -121,15 +121,8 @@ void loop() {
             int8_t getValue = readRainsteamAna();
             //rainsteamSensorCharacteristic.setValue(getValue);
 
-            //store data in buffer
-            uint8_t* transmission[9];
-            memcpy(transmission, &getValue, sizeof(getValue));
-            //record and append the sending time
-            uint64_t sendTime = getCurrentTime();
-            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
-
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(transmission);
+            liquidSensorCharacteristic.setValue(getValue);
 
             //log reading
             rainsteamCloud = getValue;
@@ -140,15 +133,8 @@ void loop() {
             lastLiquidUpdate = currentTime;
             uint16_t getValue = readLiquid();
 
-            //store data in buffer
-            uint8_t* transmission[10];
-            memcpy(transmission, &getValue, sizeof(getValue));
-            //record and append the sending time
-            uint64_t sendTime = getCurrentTime();
-            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
-
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(transmission);
+            liquidSensorCharacteristic.setValue(getValue);
 
             //log reading
             liquidCloud = getValue;
