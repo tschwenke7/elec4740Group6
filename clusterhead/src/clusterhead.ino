@@ -65,16 +65,23 @@ bool isWatering = false;    //Is the solenoid active or not?
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
-//MQTT client used to publish MQTT messages
-MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
 //apparently needed even though no callback used since we don't subscribe to any topics here.
 void callback(char* topic, byte* payload, unsigned int length) {
     Log.info("This message should not be appearing (from mqtt callback)");
 }
+//MQTT client used to publish MQTT messages
+MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
+
 
 void setup() {
 
-    client.connect("elec4740g6publisher");
+    bool connected = client.connect("elec4740g6publisher");
+    if(connected){
+        Log.info("MQTT connected successfully!");
+    }
+    else{
+        Log.info("MQTT connection failed");
+    }
 
     const uint8_t val = 0x01;
     dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
