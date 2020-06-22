@@ -20,13 +20,12 @@ void loop();
 uint64_t getCurrentTime();
 int8_t readTemperature();
 uint8_t readHumidity();
-uint16_t readCurrent();
 uint16_t readLight();
 uint16_t readMoisture();
 #line 13 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode1/src/sensorNode1.ino"
 DHT dht(D0);        //DHT for temperature/humidity 
 
-SYSTEM_MODE(SEMI_AUTOMATIC); //Put into Automatic mode so the argon can connect to the cloud
+SYSTEM_MODE(MANUAL); //Put into Automatic mode so the argon can connect to the cloud
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -150,13 +149,13 @@ void loop() {
             memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
 
             lightSensorCharacteristic.setValue(transmission);
-            Log.info("Light: %u", getValue);
         }
         
         //Moisture
         if(currentTime - lastMoistureUpdate >= MOISTURE_READ_DELAY){
             lastMoistureUpdate = currentTime;
             uint16_t getValue = readMoisture();
+            //moistureSensorCharacteristic.setValue(getValue);
 
 
             /*
@@ -178,7 +177,9 @@ void loop() {
                 {
                     moistureAverage += moistureArray[i];
                 }
+
                 moistureAverage = (uint16_t) moistureAverage / moistureArraySize;
+                /*
                 //2: returns the average to the clusterhead.
                 //package together with send time in a buffer
                 uint8_t* transmission[9];
@@ -188,8 +189,9 @@ void loop() {
                 uint64_t sendTime = getCurrentTime();
                 memcpy(transmission + sizeof(moistureAverage), &sendTime, sizeof(sendTime));
 
+                */
                 //send bluetooth transmission
-                temperatureSensorCharacteristic.setValue(transmission);
+                moistureSensorCharacteristic.setValue(moistureAverage);
                 //resets tempAssigned.
                 moistureAssigned = 0;
             }
@@ -203,44 +205,8 @@ void loop() {
         if(currentTime - lastHumidityUpdate >= HUMIDITY_READ_DELAY){
            lastHumidityUpdate = currentTime;
            uint8_t humidity = readHumidity();
-           
-           //send bluetooth transmission
-           humiditySensorCharacteristic.setValue(humidity);
-
-            /*
-            if(humidityAssigned == humidityArraySize)
-            {
-                //1: calculates average
-                int8_t humidityAverage = 0;
-                for(int i = 0; i < humidityArraySize; i++)
-                {
-                    humidityAverage += humidityArray[i];
-                }
-                humidityAverage = (int8_t) humidityAverage / humidityArraySize;
-                */
-                //2: returns the average to the clusterhead.
-                //package together with send time in a buffer
-            uint8_t* transmission[9];
-            //memcpy(transmission, &humidityAverage, sizeof(humidityAverage));.
-            memcpy(transmission, &humidity, sizeof(humidity));
-
-            //record and append the sending time
-            uint64_t sendTime = getCurrentTime();
-            //memcpy(transmission + sizeof(humidityAverage), &sendTime, sizeof(sendTime));
-            memcpy(transmission + sizeof(humidity), &sendTime, sizeof(sendTime));
-
             //send bluetooth transmission
-            humiditySensorCharacteristic.setValue(transmission);
-            //resets humidityAssigned.
-            //humidityAssigned = 0;
-                /*
-            }
-            else        //if the humidity array is not full, adds the last humidity to the end.
-            {
-                humidityArray[humidityAssigned] = humidity;
-                humidityAssigned++;
-            }
-                */
+            humiditySensorCharacteristic.setValue(humidity);
         }
         delay(100);
     }
@@ -280,10 +246,6 @@ int8_t readTemperature(){
     // Read temperature as Celsius
 	int8_t t = (int8_t) dht.getTempCelcius();   //Normally returns float
     
-    if(t > 99)      //prevents overflow errors
-    {
-        t = 99;
-    }
     Log.info("Read temperature: %u", t);
 
     //cloud data - can delete when not testing
@@ -306,19 +268,6 @@ uint8_t readHumidity(){
 	//Particle.publish("humidity", str, PUBLIC);
 
     return  h;
-}
-
-/* Read the value on the current sensor pin */
-uint16_t readCurrent(){
-    //TODO: work out how to actually read this
-
-    //cloud data - can delete when not testing
-    char str[2];
-    sprintf(str, "%u", 0);
-	//Particle.publish("Current (not currently implemented)", str, PUBLIC);
-
-    Log.info("Read current (not currently implemented): %u", 0);
-    return 0;
 }
 
 /* Read the value on the light sensor pin 

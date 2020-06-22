@@ -13,7 +13,7 @@
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
-SYSTEM_MODE(AUTOMATIC);
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -76,8 +76,8 @@ void setup() {
     //map functions to be called whenever new data is received for a characteristic
     temperatureSensorCharacteristic.onDataReceived(onTemperatureReceived1, NULL);
     humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
-    lightSensorCharacteristic.onDataReceived(onDistanceReceived, NULL);
-    moistureSensorCharacteristic.onDataReceived(onCurrentReceived1, NULL);
+    lightSensorCharacteristic.onDataReceived(onLightReceived, NULL);
+    moistureSensorCharacteristic.onDataReceived(onMoistureReceived, NULL);
 
     rainsteamSensorCharacteristic.onDataReceived(onRainsteamReceived2, NULL);
     liquidSensorCharacteristic.onDataReceived(onLightReceived2, NULL);
@@ -93,15 +93,14 @@ void loop() {
         loopStart = millis();
         
         //Sensor logic for watering
+        //Change this to send when it changes not constantly
         if(isWatering == false)
         {
-            solenoidVoltageCharacteristic.setValue(0);
+            //solenoidVoltageCharacteristic.setValue(0);
         }
         if(isWatering == true)
         {
-            solenoidVoltageCharacteristic.setValue(1);
-            //Sends true to the solenoid
-            //solenoidVoltageCharacteristic.setValue(true);
+            //solenoidVoltageCharacteristic.setValue(1);
 
         }
     }
@@ -198,12 +197,12 @@ void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
 }
 
-void onCurrentReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the current sensor reading
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
-    Log.info("Sensor 1 - Current: %u Amps", twoByteValue);
+    Log.info("Sensor 1 - Moisture: %u", twoByteValue);
 }
 
 void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -214,21 +213,12 @@ void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 2 - Current: %u Amps", twoByteValue);
 }
 
-void onDistanceReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    uint8_t byteValue;
-    uint64_t sentTime;
-
-    //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(byteValue), sizeof(sentTime));
-
-    memcpy(&byteValue, &data[0], sizeof(uint8_t));
-    Log.info("Sensor 1 - Distance: %u cm", byteValue);
-
-    //set 'moving' flag if it has changed by more than 1cm since last reading
-    moving = (abs(byteValue - currentDistance) > 1);
+void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the current sensor reading
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
-    currentDistance = byteValue;
-    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
+    Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
 }
 
 void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){

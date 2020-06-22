@@ -17,14 +17,13 @@
 
 void setup();
 void loop();
-void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 uint64_t getCurrentTime();
 int8_t readRainsteamAna();
 uint16_t readLiquid();
 uint8_t readHumanDetector();
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 #line 13 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode2/src/sensorNode2.ino"
-SYSTEM_MODE(SEMI_AUTOMATIC);     //In automatic mode so it can connect to cloud
+SYSTEM_MODE(MANUAL);     //In automatic mode so it can connect to cloud
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -135,15 +134,8 @@ void loop() {
             int8_t getValue = readRainsteamAna();
             //rainsteamSensorCharacteristic.setValue(getValue);
 
-            //store data in buffer
-            uint8_t* transmission[9];
-            memcpy(transmission, &getValue, sizeof(getValue));
-            //record and append the sending time
-            uint64_t sendTime = getCurrentTime();
-            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
-
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(transmission);
+            liquidSensorCharacteristic.setValue(getValue);
 
             //log reading
             rainsteamCloud = getValue;
@@ -154,15 +146,8 @@ void loop() {
             lastLiquidUpdate = currentTime;
             uint16_t getValue = readLiquid();
 
-            //store data in buffer
-            uint8_t* transmission[10];
-            memcpy(transmission, &getValue, sizeof(getValue));
-            //record and append the sending time
-            uint64_t sendTime = getCurrentTime();
-            memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
-
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(transmission);
+            liquidSensorCharacteristic.setValue(getValue);
 
             //log reading
             liquidCloud = getValue;
@@ -176,15 +161,9 @@ void loop() {
             //only send an update if the value has changed since last read,
             //i.e. a human has been detected or lost
             if(getValue != lastHumandDetectorValue){
-                //store data in buffer
-                uint8_t* transmission[9];
-                memcpy(transmission, &getValue, sizeof(getValue));
-                //record and append the sending time
-                uint64_t sendTime = getCurrentTime();
-                memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
 
                 //send bluetooth transmission
-                humanDetectorCharacteristic.setValue(transmission);//send the value which was read
+                humanDetectorCharacteristic.setValue(getValue);//send the value which was read
                 lastHumandDetectorValue = getValue;//update seen/unseen state
 
                 //log reading
@@ -199,20 +178,6 @@ void loop() {
         Log.info("not connected yet... ");
         delay(500);
     }
-}
-
-/** Function called whenver a value for ledVoltageCharacteristic is received via bluetooth.
- *  Updates the voltage supplied to the LED actuator to the received value */
-void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the 2-byte value to set the fan pin adc to
-    uint8_t ledVoltage;
-    memcpy(&ledVoltage, &data[0], sizeof(uint8_t));
-
-    Log.info("The LED voltage has been set via BT to %u", ledVoltage);
-
-    //set the PWM output to the LED
-    //analogWrite(ledPin, ledVoltage, ledHz);
-
 }
 
 /** Returns the current rainsteam in microseconds */
