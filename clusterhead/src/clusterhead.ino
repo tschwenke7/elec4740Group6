@@ -68,7 +68,9 @@ BleScanResult scanResults[SCAN_RESULT_MAX];
 //MQTT client used to publish MQTT messages
 MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
 //apparently needed even though no callback used since we don't subscribe to any topics here.
-void callback(char* topic, byte* payload, unsigned int length);
+void callback(char* topic, byte* payload, unsigned int length) {
+    Log.info("This message should not be appearing (from mqtt callback)");
+}
 
 void setup() {
 
