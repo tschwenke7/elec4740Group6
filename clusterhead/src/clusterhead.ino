@@ -4,6 +4,7 @@
 #include <string>
 #include <LiquidCrystal.h>
 #include <cstdlib>
+#include "MQTT.h"
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 3
@@ -64,7 +65,14 @@ bool isWatering = false;    //Is the solenoid active or not?
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
+//MQTT client used to publish MQTT messages
+MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
+//apparently needed even though no callback used since we don't subscribe to any topics here.
+void callback(char* topic, byte* payload, unsigned int length);
+
 void setup() {
+
+    client.connect("elec4740g6publisher");
 
     const uint8_t val = 0x01;
     dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
@@ -91,6 +99,9 @@ void loop() {
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
+
+        //TEST
+        client.publish("elec4740g6/data","hello world");
         
         //Sensor logic for watering
         if(isWatering == false)
