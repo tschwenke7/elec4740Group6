@@ -4,6 +4,7 @@
 #include <string>
 #include <LiquidCrystal.h>
 #include <cstdlib>
+#include "MQTT.h"
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 3
@@ -64,7 +65,22 @@ bool isWatering = false;    //Is the solenoid active or not?
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
+//apparently needed even though no callback used since we don't subscribe to any topics here.
+void callback(char* topic, byte* payload, unsigned int length) {
+    Log.info("This message should not be appearing (from mqtt callback)");
+}
+//MQTT client used to publish MQTT messages
+MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
+
 void setup() {
+
+    bool connected = client.connect("elec4740g6publisher");
+    if(connected){
+        Log.info("MQTT connected successfully!");
+    }
+    else{
+        Log.info("MQTT connection failed");
+    }
 
     const uint8_t val = 0x01;
     dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
@@ -82,7 +98,7 @@ void setup() {
     rainsteamSensorCharacteristic.onDataReceived(onRainsteamReceived2, NULL);
     liquidSensorCharacteristic.onDataReceived(onLightReceived2, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
-    solenoidVoltageCharacteristic.onDataReceived(onCurrentReceived2, NULL);
+    solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived2, NULL);
 
 }
 
@@ -91,6 +107,9 @@ void loop() {
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
+
+        //TEST
+        client.publish("elec4740g6/data","hello world");
         
         //Sensor logic for watering
         //Change this to send when it changes not constantly
@@ -205,6 +224,14 @@ void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Moisture: %u", twoByteValue);
 }
 
+void onSolenoidReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+    //read the current sensor reading
+    uint16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    
+    Log.info("Sensor 2 - Solenoid: %u ", twoByteValue);
+}
+
 void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the current sensor reading
     uint16_t twoByteValue;
@@ -229,7 +256,7 @@ void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& 
     memcpy(&sentTime, &data[0] + sizeof(rainsteam), sizeof(sentTime));
 
     memcpy(&rainsteam, &data[0], sizeof(rainsteam));
-    Log.info("Sensor 2 - Temperature: %d degrees Celsius", rainsteam);
+    Log.info("Sensor 2 - Rainsteam: %d ", rainsteam);
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
@@ -241,7 +268,7 @@ void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer
     memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
+    Log.info("Sensor 2 - Liquid: %u ", twoByteValue);
 
     currentLight = twoByteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
