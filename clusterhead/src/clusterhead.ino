@@ -122,15 +122,15 @@ void setup() {
 
 }
 
-void loop() { 
+void loop() {
+    //TEST
+    client.publish("elec4740g6/data","test"); 
+
     //do stuff if both sensors have been connected
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
-        //TEST
-        client.publish("elec4740g6/data","test");
-        
         //Sensor logic for watering
         //Change this to send when it changes not constantly
         if(isWatering == false)
