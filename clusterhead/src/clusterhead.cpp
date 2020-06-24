@@ -2,14 +2,14 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
 #include <string>
 #include <LiquidCrystal.h>
 #include <cstdlib>
-#include "MQTT.h"
+#include "MQTT5.h"
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 3
@@ -19,21 +19,22 @@
 
 // This example does not require the cloud so you can run it in manual mode or
 // normal cloud-connected mode
-void callback(char* topic, byte* payload, unsigned int length);
+void mqttFailure(MQTT5_REASON_CODE reason);
+void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, bool dup, MQTT5_QOS qos, bool retain);
 void setup();
 void loop();
 void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-void onCurrentReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onSolenoidReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 16 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
-SYSTEM_MODE(SEMI_AUTOMATIC);
+#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+SYSTEM_MODE(AUTOMATIC);
+
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
 /* holds the starting millis of this execution of the main loop, 
@@ -83,21 +84,41 @@ bool isWatering = false;    //Is the solenoid active or not?
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
 
-//apparently needed even though no callback used since we don't subscribe to any topics here.
-void callback(char* topic, byte* payload, unsigned int length) {
-    Log.info("This message should not be appearing (from mqtt callback)");
-}
 //MQTT client used to publish MQTT messages
-MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
+MQTT5 client;
+//functions used to handle MQTT
+void mqttFailure(MQTT5_REASON_CODE reason) {
+    // See codes here: https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html#_Toc3901031
+    char *buf;
+    size_t sz;
+    sz = snprintf(NULL, 0, "Failure due to reason %d", (int) reason);
+    buf = (char *)malloc(sz + 1); /* make sure you check for != NULL in real code */
+    snprintf(buf, sz+1, "Failure due to reason %d", (int) reason);
+    
+   Particle.publish(buf, PRIVATE);
+}
+
+void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, bool dup, MQTT5_QOS qos, bool retain) {
+    char content[payloadLength + 1];
+    memcpy(content, payload, payloadLength);
+    content[payloadLength] = 0;
+    Log.info("Topic: %s. Message: %s", topic, payload);
+}
 
 void setup() {
 
-    bool connected = client.connect("elec4740g6publisher");
-    if(connected){
-        Log.info("MQTT connected successfully!");
+    //setup MQTT
+    client.onConnectFailed(mqttFailure);
+    client.onPublishFailed(mqttFailure);
+    client.onSubscribeFailed(mqttFailure);
+    client.onPacketReceived(mqttPacketReceived);
+
+    if (client.connect("test.mosquitto.org", 1883, "client123") && client.awaitPackets()) {
+       client.publish("elec4740g6/data", "Hello world");
+       Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
     else{
-        Log.info("MQTT connection failed");
+        Particle.publish("MQTT connection failure :(", PRIVATE);
     }
 
     const uint8_t val = 0x01;
@@ -127,9 +148,10 @@ void loop() {
         loopStart = millis();
 
         //TEST
-        client.publish("elec4740g6/data","hello world");
+        client.publish("elec4740g6/data","test");
         
         //Sensor logic for watering
+        //Change this to send when it changes not constantly
         if(isWatering == false)
         {
             //solenoidVoltageCharacteristic.setValue(0);
@@ -285,7 +307,7 @@ void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer
     memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Light: %u Lux", twoByteValue);
+    Log.info("Sensor 2 - Liquid: %u ", twoByteValue);
 
     currentLight = twoByteValue;
     // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));

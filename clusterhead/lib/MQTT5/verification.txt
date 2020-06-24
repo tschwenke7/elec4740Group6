@@ -1,0 +1,1 @@
+Get a particle electron, flash the basic example and try it. For further instructions on how to use it see the advanced example.
