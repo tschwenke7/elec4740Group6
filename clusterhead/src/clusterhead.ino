@@ -70,7 +70,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Log.info("This message should not be appearing (from mqtt callback)");
 }
 //MQTT client used to publish MQTT messages
-MQTT client("tcp://broker.mqttdashboard.com", 1883, callback);
+MQTT client("broker.mqttdashboard.com", 1883, callback);
 
 void setup() {
 
