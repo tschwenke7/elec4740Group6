@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <chrono>
@@ -32,7 +32,7 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 17 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -141,15 +141,15 @@ void setup() {
 
 }
 
-void loop() { 
+void loop() {
+    //TEST
+    client.publish("elec4740g6/data","test"); 
+
     //do stuff if both sensors have been connected
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
-        //TEST
-        client.publish("elec4740g6/data","test");
-        
         //Sensor logic for watering
         //Change this to send when it changes not constantly
         if(isWatering == false)
