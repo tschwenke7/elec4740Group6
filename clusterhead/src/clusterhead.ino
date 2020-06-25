@@ -4,7 +4,7 @@
 #include <LiquidCrystal.h>
 #include <cstdlib>
 #include "MQTT5.h"
-#include <list>
+#include <vector>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 3
@@ -27,8 +27,9 @@ uint8_t currentLight = 0;
 int8_t currentMoisture = -1;
 int8_t currentTemperature = -127;
 int8_t currentHumidity = -1;
+uint8_t initWateringStatus = 0;
 bool isWatering = false;    //Is the solenoid active or not?
-std::list<int32_t> wateringEventTimes = {};
+std::vector<int32_t> wateringEventTimes = {};
 
 /* Watering system threshold variables */
 int LOW_SOIL_MOISTURE_THRESHOLD = 30;
@@ -285,6 +286,39 @@ void switchSprinkler(){
 }
 
 bool publishMqtt(){
+    //initialise transmission buffer
+    char buf[9+wateringEventTimes.size()*2];
+
+    //add timestamp
+    int32_t epochSeconds = Time.now();
+    memcpy(buf, &epochSeconds, 4);
+
+    //add sensor values
+    buf[4] = currentMoisture;
+    buf[5] = currentLight;
+    buf[6] = currentTemperature;
+    buf[7] = currentHumidity;
+
+    //add watering events' durations
+    buf[8] = initWateringStatus;
+
+    for(int i = 0; i < wateringEventTimes.size(); i ++){
+        uint16_t duration = (uint16_t) wateringEventTimes.at(i) - epochSeconds;
+        memcpy(buf+9+(2*i), &duration, sizeof(duration));
+    }
+
+    //publish buffer via MQTT
+    client.publish("elec4740g6", buf);
+
+    //reset watering event log for next time period
+    wateringEventTimes.clear();
+    //save init watering status for next transmission
+    if(isWatering){
+        initWateringStatus = 1;
+    }
+    else{
+        initWateringStatus = 0;
+    }
 
     return true;
 }
