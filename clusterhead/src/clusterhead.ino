@@ -343,7 +343,8 @@ void switchSprinkler(){
 
 bool publishMqtt(){
     //initialise transmission buffer
-    char buf[9+wateringEventTimes.size()*2];
+    uint16_t payloadLength = 9+wateringEventTimes.size()*2;
+    char buf[payloadLength];
 
     //add timestamp
     int32_t epochSeconds = Time.now();
@@ -384,7 +385,7 @@ bool publishMqtt(){
     Log.info("currentHumidity: %d", currentHumidity);
     Log.info("initWateringStatus: %d", initWateringStatus);
 
-    for(int i = 0; i < 9+wateringEventTimes.size()*2; i++){
+    for(int i = 0; i < payloadLength; i++){
         Log.info("Byte %d: %u", i, buf[i]);
     }
     Log.info("buffer size: %d", strlen(buf));
@@ -399,7 +400,7 @@ bool publishMqtt(){
     }
 
     //publish buffer via MQTT
-    return client.publish("elec4740g6/data", buf);;
+    return client.publish("elec4740g6/data", buf, payloadLength);
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */

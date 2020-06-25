@@ -50,8 +50,8 @@ public:
      * for asynchronous waiting. To handle errors @see onPublishFailed(MQTT5_REASON_CODE).
      * @return True if packet was sent successfully, otherwise false (only due to exceeded buffer).
      **/
-    bool publish(const char *topic, const char *payload, MQTT5_QOS qos = MQTT5_QOS::QOS0, uint16_t *packetId = NULL);
-    bool publish(const char *topic, const char *payload, bool retain, MQTT5_QOS qos, bool dup, uint16_t *packetId, MQTT5PublishProperties properties = MQTT5_DEFAULT_PUBLISH_PROPERTIES);
+    bool publish(const char *topic, const char *payload, uint16_t payloadLength, MQTT5_QOS qos = MQTT5_QOS::QOS0, uint16_t *packetId = NULL);
+    bool publish(const char *topic, const char *payload, uint16_t payloadLength, bool retain, MQTT5_QOS qos, bool dup, uint16_t *packetId, MQTT5PublishProperties properties = MQTT5_DEFAULT_PUBLISH_PROPERTIES);
     bool publish(const char *topic, const uint8_t *payload, uint16_t payloadLength, bool retain, MQTT5_QOS qos, bool dup, uint16_t *packetId, MQTT5PublishProperties properties = MQTT5_DEFAULT_PUBLISH_PROPERTIES);
     
     /**

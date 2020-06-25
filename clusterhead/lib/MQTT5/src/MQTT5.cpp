@@ -651,12 +651,12 @@ bool MQTT5::pubComp(uint16_t packetId) {
     return writeToSocket(index, false);
 }
 
-bool MQTT5::publish(const char *topic, const char *payload, MQTT5_QOS qos, uint16_t *packetId) {
-    return publish(topic, payload, false, qos, false, packetId);
+bool MQTT5::publish(const char *topic, const char *payload, uint16_t payloadLength, MQTT5_QOS qos, uint16_t *packetId) {
+    return publish(topic, payload, payloadLength, false, qos, false, packetId);
 }
 
-bool MQTT5::publish(const char *topic, const char *payload, bool retain, MQTT5_QOS qos, bool dup, uint16_t *packetId, MQTT5PublishProperties properties) {
-    return publish(topic, (const uint8_t*) payload, strlen(payload), retain, qos, dup, packetId, properties);
+bool MQTT5::publish(const char *topic, const char *payload, uint16_t payloadLength, bool retain, MQTT5_QOS qos, bool dup, uint16_t *packetId, MQTT5PublishProperties properties) {
+    return publish(topic, (const uint8_t*) payload, payloadLength, retain, qos, dup, packetId, properties);
 }
 
 bool MQTT5::publish(const char *topic, const uint8_t *payload, uint16_t payloadLength, bool retain, MQTT5_QOS qos, bool dup, uint16_t *packetId, MQTT5PublishProperties properties) {
