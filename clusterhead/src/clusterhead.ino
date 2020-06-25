@@ -38,14 +38,6 @@ int TEMPERATURE_THRESHOLD = 25;
 int AIR_HUMIDITY_THRESHOLD = 80;
 int SUNNY_LIGHT_THRESHOLD = 90000;
 
-/* Threshold modification functions */
-int sprinklerSwitch(String activate);
-int setLowSoilMoistureThreshold(String threshold);
-int setHighSoilMoistureThreshold(String threshold);
-int setTemperatureThreshold(String threshold);
-int setAirHumidityThreshold(String threshold);
-int setSunnyLightThreshold(String threshold);
-
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
 BlePeerDevice sensorNode1;
@@ -72,6 +64,9 @@ BleScanResult scanResults[SCAN_RESULT_MAX];
 
 //MQTT client used to publish MQTT messages
 MQTT5 client;
+const int PUBLISH_DELAY = 15*60*1000;//15 minute publish delay
+unsigned long lastPublishTime = millis();
+
 //functions used to handle MQTT
 void mqttFailure(MQTT5_REASON_CODE reason) {
     // See codes here: https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html#_Toc3901031
@@ -92,7 +87,6 @@ void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, b
 }
 
 /* Particle functions for Particle console control */
-
 /* Manually turn sprinkler system on/off */
 int sprinklerSwitch(String activate){
     if(activate.equalsIgnoreCase("on")){
@@ -113,11 +107,18 @@ int sprinklerSwitch(String activate){
     return 1;
 }
 
+int forceMqttPublish(String s){
+    if(publishMqtt()){
+        return 1;
+    }
+    return 0;
+}
+
+/* Threshold modification functions */
 int setLowSoilMoistureThreshold(String threshold){
     LOW_SOIL_MOISTURE_THRESHOLD = threshold.toInt();
     return 1;
 }
-
 int setHighSoilMoistureThreshold(String threshold){
     HIGH_SOIL_MOISTURE_THRESHOLD = threshold.toInt();
     return 1;
@@ -172,6 +173,7 @@ void setup() {
 
     //setup particle functions
     Particle.function("sprinklerSwitch",sprinklerSwitch);
+    Particle.function("forceMqttPublish", forceMqttPublish);
     Particle.function("setLowSoilMoistureThreshold",setLowSoilMoistureThreshold);
     Particle.function("setHighSoilMoistureThreshold",setHighSoilMoistureThreshold);
     Particle.function("setTemperatureThreshold",setTemperatureThreshold);
@@ -181,24 +183,29 @@ void setup() {
 
 void loop() {
     //TEST
-    client.publish("elec4740g6/data","test"); 
+    // client.publish("elec4740g6/data","test"); 
 
     //do stuff if both sensors have been connected
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
 
+        //check if it's time for an MQTT publish
+        if(loopStart - lastPublishTime >= PUBLISH_DELAY){
+            publishMqtt();
+        }
+
         //Sensor logic for watering
         //Change this to send when it changes not constantly
-        if(isWatering == false)
-        {
-            //solenoidVoltageCharacteristic.setValue(0);
-        }
-        if(isWatering == true)
-        {
-            //solenoidVoltageCharacteristic.setValue(1);
+        // if(isWatering == false)
+        // {
+        //     //solenoidVoltageCharacteristic.setValue(0);
+        // }
+        // if(isWatering == true)
+        // {
+        //     //solenoidVoltageCharacteristic.setValue(1);
 
-        }
+        // }
     }
 
     //if we haven't connected both, then scan for them
@@ -302,13 +309,10 @@ bool publishMqtt(){
     //add watering events' durations
     buf[8] = initWateringStatus;
 
-    for(int i = 0; i < wateringEventTimes.size(); i ++){
+    for(uint i = 0; i < wateringEventTimes.size(); i ++){
         uint16_t duration = (uint16_t) wateringEventTimes.at(i) - epochSeconds;
         memcpy(buf+9+(2*i), &duration, sizeof(duration));
     }
-
-    //publish buffer via MQTT
-    client.publish("elec4740g6", buf);
 
     //reset watering event log for next time period
     wateringEventTimes.clear();
@@ -320,7 +324,8 @@ bool publishMqtt(){
         initWateringStatus = 0;
     }
 
-    return true;
+    //publish buffer via MQTT
+    return client.publish("elec4740g6", buf);;
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
