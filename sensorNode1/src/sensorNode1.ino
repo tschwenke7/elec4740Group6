@@ -270,8 +270,9 @@ uint16_t readLight(){
 	Particle.publish("light", str, PUBLIC);
     
     //convert to lux
-	uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
-    Log.info("Read light: %u lux", lux);
+	//uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
+    uint16_t lux =  (uint16_t) (getL);
+    Log.info("Read light: %u analog read", lux);
     return lux;
 }
 
