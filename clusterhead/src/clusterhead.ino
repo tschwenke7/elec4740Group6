@@ -23,11 +23,15 @@ so we can work out how long to wait before beginning the next loop */
 unsigned long loopStart = 0;
 
 /* Data tracking variables */
-uint8_t currentLight = 0;
-int8_t currentMoisture = -1;
-int8_t currentTemperature = -127;
-int8_t currentHumidity = -1;
-uint8_t initWateringStatus = 0;
+int8_t currentTemperature = 100;//-127;
+int8_t currentHumidity = 90;//-1;
+uint8_t currentLight = 80;//0;
+uint8_t currentMoisture = 70;//-1;
+
+uint8_t currentRainsteam = 60;//-1;
+uint8_t currentLiquid = 50;//-1;
+int8_t currentHumanDetect = 0;//-1;
+uint8_t initWateringStatus = 1;//0;
 bool isWatering = false;    //Is the solenoid active or not?
 std::vector<int32_t> wateringEventTimes = {};
 
@@ -145,7 +149,7 @@ void setup() {
     client.onPacketReceived(mqttPacketReceived);
 
     if (client.connect("test.mosquitto.org", 1883, "client123") && client.awaitPackets()) {
-       client.publish("elec4740g6/data", "Hello world");
+       client.publish("elec4740g6/test", "Hello world");
        Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
     else{
@@ -189,7 +193,52 @@ void loop() {
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
+        /*
+        if(isWatering == false)
+        {
+            if((currentMoisture < 10)    
+            && (currentLight > 500)
+            && (currentTemperature > 32)
+            && (getHumanDetectsn2 = 0x00)
+            )
+            )
+            {
+                isWatering = true;
+            }
+        }
+        if(isWatering)
+        {
+            if ((getHumanDetectsn2 == 0x01)
+            || (getRainsteamsn1 > 2045) //Needs to be replaced with correct values.
+            || (getMoisturesn1 > 90)
+            || (getHumidsn1 > 70)
+            )
+            {
+                isWatering = false;
+            }
+        }
 
+        //Keeps sending info to the actuator until the actuator responds back.
+        if(isWatering != prevIsWatering)
+        {
+            if(isWatering == false)
+            {
+                solenoidVoltageCharacteristic.setValue(0);
+                if(getSolenoidsn2 == 0x00)
+                {
+                    prevIsWatering = isWatering;
+                }
+            }
+            if(isWatering == true)
+            {
+                solenoidVoltageCharacteristic.setValue(1);
+                if(getSolenoidsn2 == 0x01)
+                {
+                    prevIsWatering = isWatering;
+                }
+            }
+        }
+        */
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
             publishMqtt();
@@ -301,19 +350,44 @@ bool publishMqtt(){
     memcpy(buf, &epochSeconds, 4);
 
     //add sensor values
-    buf[4] = currentMoisture;
-    buf[5] = currentLight;
-    buf[6] = currentTemperature;
-    buf[7] = currentHumidity;
+    //memcpy(buf+4, &currentMoisture, 1);
+    //memcpy(buf+5, &currentLight, 1);
+    //memcpy(buf+6, &currentTemperature, 1);
+    //memcpy(buf+7, &currentHumidity, 1);
+    
+     buf[4] = currentMoisture;
+     buf[5] = currentLight;
+     buf[6] = currentTemperature;
+     buf[7] = currentHumidity;
 
     //add watering events' durations
-    buf[8] = initWateringStatus;
+    //memcpy(buf+8, &initWateringStatus, 1);
+     buf[8] = initWateringStatus;
+    
+    /*
+    //add sensor values
+    buf[4] = (char) currentMoisture;
+    buf[5] = (char) currentLight;
+    buf[6] = (char) currentTemperature;
+    buf[7] = (char) currentHumidity;
 
+    //add watering events' durations
+    buf[8] = (char) initWateringStatus;
+    */
     for(uint i = 0; i < wateringEventTimes.size(); i ++){
         uint16_t duration = (uint16_t) wateringEventTimes.at(i) - epochSeconds;
         memcpy(buf+9+(2*i), &duration, sizeof(duration));
     }
+    Log.info("currentMoisture: %d", currentMoisture);
+    Log.info("currentLight: %d", currentLight);
+    Log.info("currentTemperature: %d", currentTemperature);
+    Log.info("currentHumidity: %d", currentHumidity);
+    Log.info("initWateringStatus: %d", initWateringStatus);
 
+    for(int i = 0; i < 9+wateringEventTimes.size()*2; i++){
+        Log.info("Byte %d: %u", i, buf[i]);
+    }
+    Log.info("buffer size: %d", strlen(buf));
     //reset watering event log for next time period
     wateringEventTimes.clear();
     //save init watering status for next transmission
@@ -325,7 +399,7 @@ bool publishMqtt(){
     }
 
     //publish buffer via MQTT
-    return client.publish("elec4740g6", buf);;
+    return client.publish("elec4740g6/data", buf);;
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
@@ -383,6 +457,7 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
     uint8_t humanSeen;
 
     memcpy(&humanSeen, &data[0], sizeof(uint8_t));
+    currentHumanDetect = humanSeen;
     Log.info("Sensor 2 - Human detector: %u", humanSeen);
     if(humanSeen == 0x00){
         Log.info("Sensor 2 - Human lost...");
