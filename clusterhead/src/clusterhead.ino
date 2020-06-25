@@ -110,15 +110,16 @@ void setup() {
     
     
     //map functions to be called whenever new data is received for a characteristic
-    temperatureSensorCharacteristic.onDataReceived(onTemperatureReceived1, NULL);
+    temperatureSensorCharacteristic.onDataReceived(onTemperatureReceived, NULL);
     humiditySensorCharacteristic.onDataReceived(onHumidityReceived, NULL);
     lightSensorCharacteristic.onDataReceived(onLightReceived, NULL);
     moistureSensorCharacteristic.onDataReceived(onMoistureReceived, NULL);
 
-    rainsteamSensorCharacteristic.onDataReceived(onRainsteamReceived2, NULL);
-    liquidSensorCharacteristic.onDataReceived(onLightReceived2, NULL);
+    rainsteamSensorCharacteristic.onDataReceived(onRainsteamReceived, NULL);
+    liquidSensorCharacteristic.onDataReceived(onLiquidLevelReceived, NULL);
     humanDetectorCharacteristic.onDataReceived(onHumanDetectorReceived, NULL);
-    solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived2, NULL);
+    // commented out, as this value sends from here rather than receives
+    // solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived, NULL);
 
 }
 
@@ -143,6 +144,7 @@ void loop() {
 
         }
     }
+
     //if we haven't connected both, then scan for them
     else {
         Log.info("About to scan...");
@@ -214,20 +216,14 @@ void loop() {
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 
-void onTemperatureReceived1(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     int8_t receivedTemp;
-    uint64_t sentTime;
-
     
-    //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(receivedTemp), sizeof(sentTime));
     //read the temp
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
-    
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     getTempsn1 = receivedTemp;
-    // Log.info("Temp/humidity transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -241,23 +237,7 @@ void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
-    Log.info("Sensor 1 - Moisture: %u", twoByteValue);
-}
-
-void onSolenoidReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the current sensor reading
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    
-    Log.info("Sensor 2 - Solenoid: %u ", twoByteValue);
-}
-
-void onCurrentReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
-    //read the current sensor reading
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    
-    Log.info("Sensor 2 - Current: %u Amps", twoByteValue);
+    Log.info("Sensor 1 - Soil moisture: %u%%", twoByteValue);
 }
 
 void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -266,41 +246,25 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
     Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
+    currentLight = twoByteValue;
 }
 
-void onRainsteamReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     int8_t rainsteam;
-    uint64_t sentTime;
-
-    //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(rainsteam), sizeof(sentTime));
-
     memcpy(&rainsteam, &data[0], sizeof(rainsteam));
     Log.info("Sensor 2 - Rainsteam: %d ", rainsteam);
-    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }
 
-void onLightReceived2(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
+void onLiquidLevelReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint16_t twoByteValue;
-    uint64_t sentTime;
-
-    //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(twoByteValue), sizeof(sentTime));
 
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
-    Log.info("Sensor 2 - Liquid: %u ", twoByteValue);
-
-    currentLight = twoByteValue;
-    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
+    Log.info("Sensor 2 - Liquid level: %u ", twoByteValue);
 }
 
 
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint8_t humanSeen;
-    uint64_t sentTime;
-
-    //read the time of sending, to calculate transmission delay
-    memcpy(&sentTime, &data[0] + sizeof(uint8_t), sizeof(sentTime));
 
     memcpy(&humanSeen, &data[0], sizeof(uint8_t));
     Log.info("Sensor 2 - Human detector: %u", humanSeen);
@@ -313,5 +277,4 @@ void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevic
     else{
         Log.info("Sensor 2 - Invalid human detector message. Expected 0 or 1, received %u", humanSeen);
     }
-    // Log.info("Transmission delay: %llu seconds", calculateTransmissionDelay(sentTime));
 }

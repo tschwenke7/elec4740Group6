@@ -287,8 +287,6 @@ uint16_t readMoisture(){
 	sprintf(str, "%u", getL);
 	Particle.publish("moisture", str, PUBLIC);
     
-    //convert to lux
-	//uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
     Log.info("Read moisture: %u", getL);
     //return lux;
     return getL;
