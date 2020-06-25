@@ -5,11 +5,11 @@
 #line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
-#include <chrono>
 #include <string>
 #include <LiquidCrystal.h>
 #include <cstdlib>
 #include "MQTT5.h"
+#include <list>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 3
@@ -23,6 +23,8 @@ void mqttFailure(MQTT5_REASON_CODE reason);
 void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, bool dup, MQTT5_QOS qos, bool retain);
 void setup();
 void loop();
+void switchSprinkler();
+bool publishMqtt();
 void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
@@ -40,19 +42,27 @@ so we can work out how long to wait before beginning the next loop */
 unsigned long loopStart = 0;
 
 /* Data tracking variables */
-int currentSound = 0;
-uint16_t currentLight = 0;
-uint8_t currentDistance = 0;
+uint8_t currentLight = 0;
+int8_t currentMoisture = -1;
+int8_t currentTemperature = -127;
+int8_t currentHumidity = -1;
+bool isWatering = false;    //Is the solenoid active or not?
+std::list<int32_t> wateringEventTimes = {};
 
-//Gets temp and humidity from sn1, and light from sn2 for logic
-int8_t getTempsn1 = -127;
-int8_t getHumidsn1 = -1;
+/* Watering system threshold variables */
+int LOW_SOIL_MOISTURE_THRESHOLD = 30;
+int HIGH_SOIL_MOISTURE_THRESHOLD = 80;
+int TEMPERATURE_THRESHOLD = 25;
+int AIR_HUMIDITY_THRESHOLD = 80;
+int SUNNY_LIGHT_THRESHOLD = 90000;
 
-int16_t getLightsn2 = -1;
-uint8_t getHumanDetectsn2 = 0x00;
-
-//true if the difference between the last two distance readings was more than 1cm
-bool moving = false;
+/* Threshold modification functions */
+int sprinklerSwitch(String activate);
+int setLowSoilMoistureThreshold(String threshold);
+int setHighSoilMoistureThreshold(String threshold);
+int setTemperatureThreshold(String threshold);
+int setAirHumidityThreshold(String threshold);
+int setSunnyLightThreshold(String threshold);
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -73,10 +83,6 @@ BleCharacteristic rainsteamSensorCharacteristic;
 BleCharacteristic liquidSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
 BleCharacteristic solenoidVoltageCharacteristic;
-
-//Sensor logic
-bool isWatering = false;    //Is the solenoid active or not?
-
 
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
@@ -101,6 +107,50 @@ void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, b
     memcpy(content, payload, payloadLength);
     content[payloadLength] = 0;
     Log.info("Topic: %s. Message: %s", topic, payload);
+}
+
+/* Particle functions for Particle console control */
+
+/* Manually turn sprinkler system on/off */
+int sprinklerSwitch(String activate){
+    if(activate.equalsIgnoreCase("on")){
+        //turn on sprinkler if it is off
+        if(!isWatering){
+            switchSprinkler();
+        }
+    }
+    else if (activate.equalsIgnoreCase("off")){
+        //turn off sprinkler if it is on
+        if(isWatering){
+            switchSprinkler();
+        }
+    }
+    else{
+        return 0;
+    }
+    return 1;
+}
+
+int setLowSoilMoistureThreshold(String threshold){
+    LOW_SOIL_MOISTURE_THRESHOLD = threshold.toInt();
+    return 1;
+}
+
+int setHighSoilMoistureThreshold(String threshold){
+    HIGH_SOIL_MOISTURE_THRESHOLD = threshold.toInt();
+    return 1;
+}
+int setTemperatureThreshold(String threshold){
+    TEMPERATURE_THRESHOLD = threshold.toInt();
+    return 1;
+}
+int setAirHumidityThreshold(String threshold){
+    AIR_HUMIDITY_THRESHOLD = threshold.toInt();
+    return 1;
+}
+int setSunnyLightThreshold(String threshold){
+    SUNNY_LIGHT_THRESHOLD = threshold.toInt();
+    return 1;
 }
 
 void setup() {
@@ -138,6 +188,13 @@ void setup() {
     // commented out, as this value sends from here rather than receives
     // solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived, NULL);
 
+    //setup particle functions
+    Particle.function("sprinklerSwitch",sprinklerSwitch);
+    Particle.function("setLowSoilMoistureThreshold",setLowSoilMoistureThreshold);
+    Particle.function("setHighSoilMoistureThreshold",setHighSoilMoistureThreshold);
+    Particle.function("setTemperatureThreshold",setTemperatureThreshold);
+    Particle.function("setAirHumidityThreshold",setAirHumidityThreshold);
+    Particle.function("setSunnyLightThreshold",setSunnyLightThreshold);
 }
 
 void loop() {
@@ -231,6 +288,26 @@ void loop() {
     }
 }
 
+void switchSprinkler(){
+    //turn sprinkler off if it was on
+    if(isWatering){
+        solenoidVoltageCharacteristic.setValue(0);
+    }
+    //alternatively, turn sprinkler on if it was off
+    else{
+        solenoidVoltageCharacteristic.setValue(1);
+    }
+    //record the time this switch occurred
+    wateringEventTimes.push_back((int32_t) Time.now());
+    //flip the watering flag
+    isWatering = !isWatering;
+}
+
+bool publishMqtt(){
+
+    return true;
+}
+
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 
 void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -240,13 +317,14 @@ void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice&
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
-    getTempsn1 = receivedTemp;
+    currentTemperature = receivedTemp;
 }
 
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint8_t receivedHumidity;
     memcpy(&receivedHumidity, &data[0], sizeof(receivedHumidity));
     Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
+    currentHumidity = receivedHumidity;
 }
 
 void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -255,12 +333,13 @@ void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
     Log.info("Sensor 1 - Soil moisture: %u%%", twoByteValue);
+    currentMoisture = twoByteValue;
 }
 
 void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the current sensor reading
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    int16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(twoByteValue));
     
     Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
     currentLight = twoByteValue;

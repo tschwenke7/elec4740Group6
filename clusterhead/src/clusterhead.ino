@@ -1,10 +1,10 @@
 #include "Particle.h"
 #include "dct.h"
-#include <chrono>
 #include <string>
 #include <LiquidCrystal.h>
 #include <cstdlib>
 #include "MQTT5.h"
+#include <list>
 /*
  * clusterhead.ino
  * Description: code to flash to the "clusterhead" argon for assignment 3
@@ -23,16 +23,12 @@ so we can work out how long to wait before beginning the next loop */
 unsigned long loopStart = 0;
 
 /* Data tracking variables */
-int currentSound = 0;
-uint16_t currentLight = 0;
-uint8_t currentDistance = 0;
-
-//Gets temp and humidity from sn1, and light from sn2 for logic
-int8_t getTempsn1 = -127;
-int8_t getHumidsn1 = -1;
-
-int16_t getLightsn2 = -1;
-uint8_t getHumanDetectsn2 = 0x00;
+uint8_t currentLight = 0;
+int8_t currentMoisture = -1;
+int8_t currentTemperature = -127;
+int8_t currentHumidity = -1;
+bool isWatering = false;    //Is the solenoid active or not?
+std::list<int32_t> wateringEventTimes = {};
 
 /* Watering system threshold variables */
 int LOW_SOIL_MOISTURE_THRESHOLD = 30;
@@ -69,10 +65,6 @@ BleCharacteristic liquidSensorCharacteristic;
 BleCharacteristic humanDetectorCharacteristic;
 BleCharacteristic solenoidVoltageCharacteristic;
 
-//Sensor logic
-bool isWatering = false;    //Is the solenoid active or not?
-
-
 // void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 const size_t SCAN_RESULT_MAX = 30;
 BleScanResult scanResults[SCAN_RESULT_MAX];
@@ -103,11 +95,16 @@ void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, b
 /* Manually turn sprinkler system on/off */
 int sprinklerSwitch(String activate){
     if(activate.equalsIgnoreCase("on")){
-        //turn on sprinkler
-        solenoidVoltageCharacteristic.setValue(1);
+        //turn on sprinkler if it is off
+        if(!isWatering){
+            switchSprinkler();
+        }
     }
     else if (activate.equalsIgnoreCase("off")){
-        solenoidVoltageCharacteristic.setValue(0);
+        //turn off sprinkler if it is on
+        if(isWatering){
+            switchSprinkler();
+        }
     }
     else{
         return 0;
@@ -272,6 +269,26 @@ void loop() {
     }
 }
 
+void switchSprinkler(){
+    //turn sprinkler off if it was on
+    if(isWatering){
+        solenoidVoltageCharacteristic.setValue(0);
+    }
+    //alternatively, turn sprinkler on if it was off
+    else{
+        solenoidVoltageCharacteristic.setValue(1);
+    }
+    //record the time this switch occurred
+    wateringEventTimes.push_back((int32_t) Time.now());
+    //flip the watering flag
+    isWatering = !isWatering;
+}
+
+bool publishMqtt(){
+
+    return true;
+}
+
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
 
 void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -281,13 +298,14 @@ void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice&
     memcpy(&receivedTemp, &data[0], sizeof(receivedTemp));
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
-    getTempsn1 = receivedTemp;
+    currentTemperature = receivedTemp;
 }
 
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     uint8_t receivedHumidity;
     memcpy(&receivedHumidity, &data[0], sizeof(receivedHumidity));
     Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
+    currentHumidity = receivedHumidity;
 }
 
 void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -296,12 +314,13 @@ void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
     Log.info("Sensor 1 - Soil moisture: %u%%", twoByteValue);
+    currentMoisture = twoByteValue;
 }
 
 void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
     //read the current sensor reading
-    uint16_t twoByteValue;
-    memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
+    int16_t twoByteValue;
+    memcpy(&twoByteValue, &data[0], sizeof(twoByteValue));
     
     Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
     currentLight = twoByteValue;
