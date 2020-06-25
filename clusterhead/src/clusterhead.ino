@@ -149,7 +149,7 @@ void setup() {
     client.onPacketReceived(mqttPacketReceived);
 
     if (client.connect("test.mosquitto.org", 1883, "client123") && client.awaitPackets()) {
-       client.publish("elec4740g6/test", "Hello world");
+       client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
        Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
     else{

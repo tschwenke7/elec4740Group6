@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <string>
@@ -39,7 +39,7 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLiquidLevelReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 17 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -175,7 +175,7 @@ void setup() {
     client.onPacketReceived(mqttPacketReceived);
 
     if (client.connect("test.mosquitto.org", 1883, "client123") && client.awaitPackets()) {
-       client.publish("elec4740g6/test", "Hello world");
+       client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
        Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
     else{
@@ -369,7 +369,8 @@ void switchSprinkler(){
 
 bool publishMqtt(){
     //initialise transmission buffer
-    char buf[9+wateringEventTimes.size()*2];
+    uint16_t payloadLength = 9+wateringEventTimes.size()*2;
+    char buf[payloadLength];
 
     //add timestamp
     int32_t epochSeconds = Time.now();
@@ -410,7 +411,7 @@ bool publishMqtt(){
     Log.info("currentHumidity: %d", currentHumidity);
     Log.info("initWateringStatus: %d", initWateringStatus);
 
-    for(int i = 0; i < 9+wateringEventTimes.size()*2; i++){
+    for(int i = 0; i < payloadLength; i++){
         Log.info("Byte %d: %u", i, buf[i]);
     }
     Log.info("buffer size: %d", strlen(buf));
@@ -425,7 +426,7 @@ bool publishMqtt(){
     }
 
     //publish buffer via MQTT
-    return client.publish("elec4740g6/data", buf);;
+    return client.publish("elec4740g6/data", buf, payloadLength);
 }
 
 /* These functions are where we do something with the data (in bytes) we've received via bluetooth */
