@@ -34,8 +34,20 @@ int8_t getHumidsn1 = -1;
 int16_t getLightsn2 = -1;
 uint8_t getHumanDetectsn2 = 0x00;
 
-//true if the difference between the last two distance readings was more than 1cm
-bool moving = false;
+/* Watering system threshold variables */
+int LOW_SOIL_MOISTURE_THRESHOLD = 30;
+int HIGH_SOIL_MOISTURE_THRESHOLD = 80;
+int TEMPERATURE_THRESHOLD = 25;
+int AIR_HUMIDITY_THRESHOLD = 80;
+int SUNNY_LIGHT_THRESHOLD = 90000;
+
+/* Threshold modification functions */
+int sprinklerSwitch(String activate);
+int setLowSoilMoistureThreshold(String threshold);
+int setHighSoilMoistureThreshold(String threshold);
+int setTemperatureThreshold(String threshold);
+int setAirHumidityThreshold(String threshold);
+int setSunnyLightThreshold(String threshold);
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -86,6 +98,45 @@ void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, b
     Log.info("Topic: %s. Message: %s", topic, payload);
 }
 
+/* Particle functions for Particle console control */
+
+/* Manually turn sprinkler system on/off */
+int sprinklerSwitch(String activate){
+    if(activate.equalsIgnoreCase("on")){
+        //turn on sprinkler
+        solenoidVoltageCharacteristic.setValue(1);
+    }
+    else if (activate.equalsIgnoreCase("off")){
+        solenoidVoltageCharacteristic.setValue(0);
+    }
+    else{
+        return 0;
+    }
+    return 1;
+}
+
+int setLowSoilMoistureThreshold(String threshold){
+    LOW_SOIL_MOISTURE_THRESHOLD = threshold.toInt();
+    return 1;
+}
+
+int setHighSoilMoistureThreshold(String threshold){
+    HIGH_SOIL_MOISTURE_THRESHOLD = threshold.toInt();
+    return 1;
+}
+int setTemperatureThreshold(String threshold){
+    TEMPERATURE_THRESHOLD = threshold.toInt();
+    return 1;
+}
+int setAirHumidityThreshold(String threshold){
+    AIR_HUMIDITY_THRESHOLD = threshold.toInt();
+    return 1;
+}
+int setSunnyLightThreshold(String threshold){
+    SUNNY_LIGHT_THRESHOLD = threshold.toInt();
+    return 1;
+}
+
 void setup() {
 
     //setup MQTT
@@ -121,6 +172,13 @@ void setup() {
     // commented out, as this value sends from here rather than receives
     // solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived, NULL);
 
+    //setup particle functions
+    Particle.function("sprinklerSwitch",sprinklerSwitch);
+    Particle.function("setLowSoilMoistureThreshold",setLowSoilMoistureThreshold);
+    Particle.function("setHighSoilMoistureThreshold",setHighSoilMoistureThreshold);
+    Particle.function("setTemperatureThreshold",setTemperatureThreshold);
+    Particle.function("setAirHumidityThreshold",setAirHumidityThreshold);
+    Particle.function("setSunnyLightThreshold",setSunnyLightThreshold);
 }
 
 void loop() {
