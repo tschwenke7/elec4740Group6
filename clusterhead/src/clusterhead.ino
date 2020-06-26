@@ -36,11 +36,11 @@ bool isWatering = false;    //Is the solenoid active or not?
 std::vector<int32_t> wateringEventTimes = {};
 
 /* Watering system threshold variables */
-int LOW_SOIL_MOISTURE_THRESHOLD = 30;
+int LOW_SOIL_MOISTURE_THRESHOLD = 75;
 int HIGH_SOIL_MOISTURE_THRESHOLD = 80;
-int TEMPERATURE_THRESHOLD = 25;
-int AIR_HUMIDITY_THRESHOLD = 80;
-int SUNNY_LIGHT_THRESHOLD = 90000;
+int TEMPERATURE_THRESHOLD = 32;
+int AIR_HUMIDITY_THRESHOLD = 100;
+int SUNNY_LIGHT_THRESHOLD = 68;
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -193,52 +193,28 @@ void loop() {
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
-        /*
         if(isWatering == false)
         {
-            if((currentMoisture < 10)    
-            && (currentLight > 500)
-            && (currentTemperature > 32)
-            && (getHumanDetectsn2 = 0x00)
-            )
+            if((currentMoisture < LOW_SOIL_MOISTURE_THRESHOLD)    
+            && (currentLight > SUNNY_LIGHT_THRESHOLD)
+            && (currentTemperature > TEMPERATURE_THRESHOLD)
+            && (currentHumanDetect == 0x00)
             )
             {
-                isWatering = true;
+                switchSprinkler();
             }
         }
         if(isWatering)
         {
-            if ((getHumanDetectsn2 == 0x01)
-            || (getRainsteamsn1 > 2045) //Needs to be replaced with correct values.
-            || (getMoisturesn1 > 90)
-            || (getHumidsn1 > 70)
+            if ((currentHumanDetect == 0x01)
+            || (currentRainsteam > 80) //Needs to be replaced with correct values.
+            || (currentMoisture > HIGH_SOIL_MOISTURE_THRESHOLD)
+            || (currentHumidity > AIR_HUMIDITY_THRESHOLD)
             )
             {
-                isWatering = false;
+                switchSprinkler();
             }
         }
-
-        //Keeps sending info to the actuator until the actuator responds back.
-        if(isWatering != prevIsWatering)
-        {
-            if(isWatering == false)
-            {
-                solenoidVoltageCharacteristic.setValue(0);
-                if(getSolenoidsn2 == 0x00)
-                {
-                    prevIsWatering = isWatering;
-                }
-            }
-            if(isWatering == true)
-            {
-                solenoidVoltageCharacteristic.setValue(1);
-                if(getSolenoidsn2 == 0x01)
-                {
-                    prevIsWatering = isWatering;
-                }
-            }
-        }
-        */
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
             publishMqtt();
@@ -379,6 +355,7 @@ bool publishMqtt(){
         uint16_t duration = (uint16_t) wateringEventTimes.at(i) - epochSeconds;
         memcpy(buf+9+(2*i), &duration, sizeof(duration));
     }
+    /*
     Log.info("currentMoisture: %d", currentMoisture);
     Log.info("currentLight: %d", currentLight);
     Log.info("currentTemperature: %d", currentTemperature);
@@ -389,6 +366,7 @@ bool publishMqtt(){
         Log.info("Byte %d: %u", i, buf[i]);
     }
     Log.info("buffer size: %d", strlen(buf));
+    */
     //reset watering event log for next time period
     wateringEventTimes.clear();
     //save init watering status for next transmission

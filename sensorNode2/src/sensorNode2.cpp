@@ -51,6 +51,7 @@ unsigned long lastLiquidUpdate = 0;//last absolute time a recording was taken
 const char* liquidSensorUuid("88ba2f5d-1e98-49af-8697-d0516df03be9");
 BleCharacteristic liquidSensorCharacteristic("liquid",
 BleCharacteristicProperty::NOTIFY, liquidSensorUuid, sensorNode2ServiceUuid);
+uint16_t getLiquid = -1;
 
 /* Human detection sensor variables */
 const int humanDetectorPin = D3; //pin reading output of temp sensor
@@ -115,6 +116,23 @@ void setup() {
 void loop() {
     //only begin using sensors when this node has connected to a cluster head
     if(true){   //BLE.connected()){
+        //TEST CODE : COMMENT OUT WHEN COMPLETE
+        //
+        /*
+        if(getLiquid < 3200)
+        {
+            digitalWrite(solenoidPin, HIGH); 
+
+        }
+        else
+        {
+            digitalWrite(solenoidPin, LOW); 
+
+        }
+        */
+        //Log.info("Solenoid Pin: %b", digitalRead(solenoidPin));
+        
+        /*
         if(solenoidIsOn)
         {
             digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
@@ -123,6 +141,7 @@ void loop() {
         {
             digitalWrite(solenoidPin, LOW);
         }
+        */
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
@@ -131,11 +150,16 @@ void loop() {
         //rainsteam
         if(currentTime - lastRainsteamUpdate >= RAINSTEAM_READ_DELAY){
             lastRainsteamUpdate = currentTime;
-            int8_t getValue = readRainsteamAna();
+            uint16_t getValue = readRainsteamAna();
+            double getProcessedValue = (double) getValue;
+            getProcessedValue = getProcessedValue/4095*100;
+            getValue = (uint16_t) getProcessedValue;
+            Log.info("[postprocess] Read rainsteam : %u analog read", getValue);
+            
             //rainsteamSensorCharacteristic.setValue(getValue);
 
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(getValue);
+            rainsteamSensorCharacteristic.setValue(getValue);
 
             //log reading
             rainsteamCloud = getValue;
@@ -145,6 +169,10 @@ void loop() {
         if(currentTime - lastLiquidUpdate >= LIQUID_READ_DELAY){
             lastLiquidUpdate = currentTime;
             uint16_t getValue = readLiquid();
+            double getProcessedValue = (double) getValue;
+            getProcessedValue = getProcessedValue/4095*100;
+            getValue = (uint16_t) getProcessedValue;
+            Log.info("[postprocess] Read Liquid : %u analog read", getValue);
 
             //send bluetooth transmission
             liquidSensorCharacteristic.setValue(getValue);
@@ -200,7 +228,7 @@ int8_t readRainsteamAna(){
 	
     //convert pin value to celsius
 	//int8_t degC = (int8_t) t*0.08 - 273;
-    Log.info("Read Rainsteam Analog: %d raw output, not degrees celsius", t);
+    Log.info("Read Rainsteam Analog: %d ", t);
 
 	//return degC;
     return t;
@@ -211,6 +239,7 @@ Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
 uint16_t readLiquid(){
     uint16_t getS = analogRead(liquidPin);
+    getLiquid = getS;
 
     Log.info("Read liquid: %u", getS);
 
@@ -245,6 +274,8 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
     memcpy(&solenoidVoltage, &data[0], sizeof(uint8_t));
 
     Log.info("Solenoid updated via bluetooth to %u", solenoidVoltage);
+    
+    solenoidVoltageCharacteristic.setValue(solenoidVoltage);
     //Should be 0 to turn off, 1 to turn on.
     if(solenoidVoltage == 1)
     {

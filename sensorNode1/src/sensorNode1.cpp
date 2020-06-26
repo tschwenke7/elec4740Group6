@@ -140,6 +140,10 @@ void loop() {
         if(currentTime - lastLightUpdate >= LIGHT_READ_DELAY){
             lastLightUpdate = currentTime;
             uint16_t getValue = readLight();
+            double getProcessedValue = (double) getValue;
+            getProcessedValue = getProcessedValue/4095*100;
+            getValue = (uint16_t) getProcessedValue;
+            Log.info("[postprocess] Read light : %u analog read", getValue);
 
             //store data in buffer
             uint8_t* transmission[10];
@@ -155,6 +159,10 @@ void loop() {
         if(currentTime - lastMoistureUpdate >= MOISTURE_READ_DELAY){
             lastMoistureUpdate = currentTime;
             uint16_t getValue = readMoisture();
+            double getProcessedValue = (double) getValue;
+            getProcessedValue = getProcessedValue/4095*100;
+            getValue = (uint16_t) getProcessedValue;
+            Log.info("[postprocess] Read light : %u analog read", getValue);
             //moistureSensorCharacteristic.setValue(getValue);
 
 
@@ -284,7 +292,7 @@ uint16_t readLight(){
     
     //convert to lux
 	//uint16_t lux =  (uint16_t) (getL - 1382.758621)/3.793103448 + 30;
-    uint16_t lux =  (uint16_t) (getL);
+    uint16_t lux = (uint16_t) (getL);
     Log.info("Read light: %u analog read", lux);
     return lux;
 }

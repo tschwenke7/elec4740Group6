@@ -137,11 +137,16 @@ void loop() {
         //rainsteam
         if(currentTime - lastRainsteamUpdate >= RAINSTEAM_READ_DELAY){
             lastRainsteamUpdate = currentTime;
-            int8_t getValue = readRainsteamAna();
+            uint16_t getValue = readRainsteamAna();
+            double getProcessedValue = (double) getValue;
+            getProcessedValue = getProcessedValue/4095*100;
+            getValue = (uint16_t) getProcessedValue;
+            Log.info("[postprocess] Read rainsteam : %u analog read", getValue);
+            
             //rainsteamSensorCharacteristic.setValue(getValue);
 
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(getValue);
+            rainsteamSensorCharacteristic.setValue(getValue);
 
             //log reading
             rainsteamCloud = getValue;
@@ -151,6 +156,10 @@ void loop() {
         if(currentTime - lastLiquidUpdate >= LIQUID_READ_DELAY){
             lastLiquidUpdate = currentTime;
             uint16_t getValue = readLiquid();
+            double getProcessedValue = (double) getValue;
+            getProcessedValue = getProcessedValue/4095*100;
+            getValue = (uint16_t) getProcessedValue;
+            Log.info("[postprocess] Read Liquid : %u analog read", getValue);
 
             //send bluetooth transmission
             liquidSensorCharacteristic.setValue(getValue);

@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <string>
@@ -39,7 +39,7 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLiquidLevelReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 17 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -219,52 +219,28 @@ void loop() {
     if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
-        /*
         if(isWatering == false)
         {
             if((currentMoisture < 10)    
             && (currentLight > 500)
             && (currentTemperature > 32)
-            && (getHumanDetectsn2 = 0x00)
-            )
+            && (currentHumanDetect == 0x00)
             )
             {
-                isWatering = true;
+                switchSprinkler();
             }
         }
         if(isWatering)
         {
-            if ((getHumanDetectsn2 == 0x01)
-            || (getRainsteamsn1 > 2045) //Needs to be replaced with correct values.
-            || (getMoisturesn1 > 90)
-            || (getHumidsn1 > 70)
+            if ((currentHumanDetect == 0x01)
+            || (currentRainsteam > 2045) //Needs to be replaced with correct values.
+            || (currentMoisture > 90)
+            || (currentHumidity > 70)
             )
             {
-                isWatering = false;
+                switchSprinkler();
             }
         }
-
-        //Keeps sending info to the actuator until the actuator responds back.
-        if(isWatering != prevIsWatering)
-        {
-            if(isWatering == false)
-            {
-                solenoidVoltageCharacteristic.setValue(0);
-                if(getSolenoidsn2 == 0x00)
-                {
-                    prevIsWatering = isWatering;
-                }
-            }
-            if(isWatering == true)
-            {
-                solenoidVoltageCharacteristic.setValue(1);
-                if(getSolenoidsn2 == 0x01)
-                {
-                    prevIsWatering = isWatering;
-                }
-            }
-        }
-        */
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
             publishMqtt();
@@ -405,6 +381,7 @@ bool publishMqtt(){
         uint16_t duration = (uint16_t) wateringEventTimes.at(i) - epochSeconds;
         memcpy(buf+9+(2*i), &duration, sizeof(duration));
     }
+    /*
     Log.info("currentMoisture: %d", currentMoisture);
     Log.info("currentLight: %d", currentLight);
     Log.info("currentTemperature: %d", currentTemperature);
@@ -415,6 +392,7 @@ bool publishMqtt(){
         Log.info("Byte %d: %u", i, buf[i]);
     }
     Log.info("buffer size: %d", strlen(buf));
+    */
     //reset watering event log for next time period
     wateringEventTimes.clear();
     //save init watering status for next transmission
