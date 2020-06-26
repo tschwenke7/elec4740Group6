@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <string>
@@ -39,7 +39,7 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLiquidLevelReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 17 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -62,11 +62,11 @@ bool isWatering = false;    //Is the solenoid active or not?
 std::vector<int32_t> wateringEventTimes = {};
 
 /* Watering system threshold variables */
-int LOW_SOIL_MOISTURE_THRESHOLD = 30;
+int LOW_SOIL_MOISTURE_THRESHOLD = 75;
 int HIGH_SOIL_MOISTURE_THRESHOLD = 80;
-int TEMPERATURE_THRESHOLD = 25;
-int AIR_HUMIDITY_THRESHOLD = 80;
-int SUNNY_LIGHT_THRESHOLD = 90000;
+int TEMPERATURE_THRESHOLD = 32;
+int AIR_HUMIDITY_THRESHOLD = 100;
+int SUNNY_LIGHT_THRESHOLD = 68;
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -174,7 +174,13 @@ void setup() {
     client.onSubscribeFailed(mqttFailure);
     client.onPacketReceived(mqttPacketReceived);
 
-    if (client.connect("test.mosquitto.org", 1883, "client123") && client.awaitPackets()) {
+    
+    //  You can also use IP address:
+     uint8_t server[] = {192, 168, 1, 1};
+    //  instead of domain:
+    //  "test.mosquitto.org"
+    
+    if (client.connect(/*"test.mosquitto.org"*/server, 1883, "client123") && client.awaitPackets()) {
        client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
        Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
@@ -221,9 +227,9 @@ void loop() {
         loopStart = millis();
         if(isWatering == false)
         {
-            if((currentMoisture < 10)    
-            && (currentLight > 500)
-            && (currentTemperature > 32)
+            if((currentMoisture < LOW_SOIL_MOISTURE_THRESHOLD)    
+            && (currentLight > SUNNY_LIGHT_THRESHOLD)
+            && (currentTemperature > TEMPERATURE_THRESHOLD)
             && (currentHumanDetect == 0x00)
             )
             {
@@ -233,9 +239,9 @@ void loop() {
         if(isWatering)
         {
             if ((currentHumanDetect == 0x01)
-            || (currentRainsteam > 2045) //Needs to be replaced with correct values.
-            || (currentMoisture > 90)
-            || (currentHumidity > 70)
+            || (currentRainsteam > 80) //Needs to be replaced with correct values.
+            || (currentMoisture > HIGH_SOIL_MOISTURE_THRESHOLD)
+            || (currentHumidity > AIR_HUMIDITY_THRESHOLD)
             )
             {
                 switchSprinkler();
@@ -243,6 +249,7 @@ void loop() {
         }
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
+            lastPublishTime = loopStart;
             publishMqtt();
         }
 
