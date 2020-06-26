@@ -28,6 +28,10 @@ unsigned long lastRainsteamUpdate = 0;//last absolute time a recording was taken
 const char* rainsteamSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
 BleCharacteristic rainsteamSensorCharacteristic("rainsteam",
 BleCharacteristicProperty::NOTIFY, rainsteamSensorUuid, sensorNode2ServiceUuid);
+//Array of last recorded for short term averages
+int16_t rainsteamArray[5];
+int16_t rainsteamAssigned = 0;                                 //Tracks the number of assigned . When  assigned == Array.length, it sends the value to the clusterhead.
+int16_t rainsteamArraySize = sizeof(rainsteamArray)/sizeof(rainsteamArray[0]); //Holds array size for readability.
 
 /* liquid sensor variables */
 const int liquidPin = A5;//A2; //pin reading output of sensor
@@ -39,6 +43,10 @@ const char* liquidSensorUuid("88ba2f5d-1e98-49af-8697-d0516df03be9");
 BleCharacteristic liquidSensorCharacteristic("liquid",
 BleCharacteristicProperty::NOTIFY, liquidSensorUuid, sensorNode2ServiceUuid);
 uint16_t getLiquid = -1;
+//Array of last recorded for short term averages
+int16_t liquidArray[5];
+int16_t liquidAssigned = 0;                                 //Tracks the number of assigned . When  assigned == Array.length, it sends the value to the clusterhead.
+int16_t liquidArraySize = sizeof(liquidArray)/sizeof(liquidArray[0]); //Holds array size for readability.
 
 /* Human detection sensor variables */
 const int humanDetectorPin = D3; //pin reading output of temp sensor
@@ -142,15 +150,38 @@ void loop() {
             getProcessedValue = getProcessedValue/4095*100;
             getValue = (uint16_t) getProcessedValue;
             Log.info("[postprocess] Read rainsteam : %u analog read", getValue);
+            if(rainsteamAssigned == rainsteamArraySize)
+            {
+                //1: calculates average
+                int rainsteamAverage = 0;
+                for(int i = 0; i < rainsteamArraySize; i++)
+                {
+                    rainsteamAverage += rainsteamArray[i];
+                }
+
+                rainsteamAverage = (uint16_t) (rainsteamAverage / rainsteamArraySize);
+                rainsteamSensorCharacteristic.setValue(rainsteamAverage);
+                //log reading
+                rainsteamCloud = getValue;
+                Log.info("1 Rain steam: %u", rainsteamArray[0]);
+                Log.info("2 Rain steam: %u", rainsteamArray[1]);
+                Log.info("3 Rain steam: %u", rainsteamArray[2]);
+                Log.info("4 Rain steam: %u", rainsteamArray[3]);
+                Log.info("5 Rain steam: %u", rainsteamArray[4]);
+                Log.info("Average Rain steam: %u", rainsteamAverage);
+                rainsteamAssigned = 0;
+            }
+            else        //if the  array is not full, adds the last value to the end.
+            {
+                rainsteamArray[rainsteamAssigned] = getValue;
+                rainsteamAssigned++;
+            }
             
             //rainsteamSensorCharacteristic.setValue(getValue);
 
             //send bluetooth transmission
-            rainsteamSensorCharacteristic.setValue(getValue);
+            //rainsteamSensorCharacteristic.setValue(getValue);
 
-            //log reading
-            rainsteamCloud = getValue;
-            Log.info("Rain steam: %u", getValue);
         }
         //liquid
         if(currentTime - lastLiquidUpdate >= LIQUID_READ_DELAY){
@@ -159,14 +190,40 @@ void loop() {
             double getProcessedValue = (double) getValue;
             getProcessedValue = getProcessedValue/4095*100;
             getValue = (uint16_t) getProcessedValue;
-            Log.info("[postprocess] Read Liquid : %u analog read", getValue);
+            //Log.info("[postprocess] Read Liquid : %u analog read", getValue);
+
+            if(liquidAssigned == liquidArraySize)
+            {
+                //1: calculates average
+                int liquidAverage = 0;
+                for(int i = 0; i < liquidArraySize; i++)
+                {
+                    liquidAverage += liquidArray[i];
+                }
+
+                liquidAverage = (uint16_t) (liquidAverage / liquidArraySize);
+                liquidSensorCharacteristic.setValue(liquidAverage);
+                //log reading
+                liquidCloud = getValue;
+                Log.info("1  Liquid: %u", liquidArray[0]);
+                Log.info("2  Liquid: %u", liquidArray[1]);
+                Log.info("3  Liquid: %u", liquidArray[2]);
+                Log.info("4  Liquid: %u", liquidArray[3]);
+                Log.info("5  Liquid: %u", liquidArray[4]);
+                Log.info("Average Liquid: %u", liquidAverage);
+                liquidAssigned = 0;
+            }
+            else        //if the  array is not full, adds the last value to the end.
+            {
+                liquidArray[liquidAssigned] = getValue;
+                liquidAssigned++;
+            }
 
             //send bluetooth transmission
-            liquidSensorCharacteristic.setValue(getValue);
+            //liquidSensorCharacteristic.setValue(getValue);
 
             //log reading
-            liquidCloud = getValue;
-            Log.info("liquid: %u", getValue);
+            //liquidCloud = getValue;
         }
         //human detector
         if(currentTime - lastHumanDetectorUpdate >= HUMAN_DETECTOR_READ_DELAY){
@@ -204,7 +261,7 @@ uint64_t getCurrentTime(){
 /* Read the value on the rainsteam sensor pin 
 Analogue pin generates 12 bits of data, so store as a 2-byte uint
 */
-int8_t readRainsteamAna(){
+int16_t readRainsteamAna(){
     // Read rainsteam pin
 	uint16_t t = analogRead(rainsteamPin);
 
@@ -215,7 +272,7 @@ int8_t readRainsteamAna(){
 	
     //convert pin value to celsius
 	//int8_t degC = (int8_t) t*0.08 - 273;
-    Log.info("Read Rainsteam Analog: %d ", t);
+    Log.info("Read Rainsteam Analog: %u ", t);
 
 	//return degC;
     return t;

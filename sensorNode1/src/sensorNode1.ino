@@ -29,6 +29,10 @@ unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was tak
 const char* temperatureSensorUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
 BleCharacteristic temperatureSensorCharacteristic("temp",
 BleCharacteristicProperty::NOTIFY, temperatureSensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded for short term averages
+int16_t temperatureArray[5];
+int16_t temperatureAssigned = 0;                                 //Tracks the number of assigned . When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
+int16_t temperatureArraySize = sizeof(temperatureArray)/sizeof(temperatureArray[0]); //Holds array size for readability.
 
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
@@ -39,7 +43,10 @@ unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
 BleCharacteristic humiditySensorCharacteristic("humid",
 BleCharacteristicProperty::NOTIFY, humiditySensorUuid, sensorNode1ServiceUuid);
-
+//Array of last recorded moistures for short term averages
+int16_t humidityArray[5];
+int16_t humidityAssigned = 0;                                 //Tracks the number of assigned humidity. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
+int16_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Holds array size for readability.
 
 /* Light sensor variables */
 const int lightPin = A2; //pin reading output of sensor
@@ -50,6 +57,10 @@ unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 const char* lightSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
 BleCharacteristic lightSensorCharacteristic("light",
 BleCharacteristicProperty::NOTIFY, lightSensorUuid, sensorNode1ServiceUuid);
+//Array of last recorded moistures for short term averages
+int16_t lightArray[5];
+int16_t lightAssigned = 0;                                 //Tracks the number of assigned moistures. When temp assigned == tempArray.length, it sends the temperature to the clusterhead.
+int16_t lightArraySize = sizeof(lightArray)/sizeof(lightArray[0]); //Holds array size for readability.
 
 /* Soil Moisture sensor variables */
 const int moisturePin = A1; //pin reading output of sensor
@@ -110,6 +121,33 @@ void loop() {
             lastTemperatureUpdate = currentTime;
             //read temp
             int8_t temp = readTemperature();
+            
+            if(temperatureAssigned == temperatureArraySize)
+            {
+                //1: calculates average
+                int temperatureAverage = 0;
+                for(int i = 0; i < temperatureArraySize; i++)
+                {
+                    temperatureAverage += temperatureArray[i];
+                }
+
+                temperatureAverage = (uint16_t) (temperatureAverage / temperatureArraySize);
+                temperatureSensorCharacteristic.setValue(temperatureAverage);
+                //log reading
+                Log.info("1 temp : %u", temperatureArray[0]);
+                Log.info("2 temp : %u", temperatureArray[1]);
+                Log.info("3 temp : %u", temperatureArray[2]);
+                Log.info("4 temp : %u", temperatureArray[3]);
+                Log.info("5 temp : %u", temperatureArray[4]);
+                Log.info("Average temp : %u", temperatureAverage);
+                temperatureAssigned = 0;
+            }
+            else        //if the  array is not full, adds the last value to the end.
+            {
+                temperatureArray[temperatureAssigned] = temp;
+                temperatureAssigned++;
+            }
+            /*
             //package together with send time in a buffer
             uint8_t* transmission[9];
             //memcpy(transmission, &tempAverage, sizeof(tempAverage));
@@ -118,9 +156,9 @@ void loop() {
             uint64_t sendTime = getCurrentTime();
             //memcpy(transmission + sizeof(tempAverage), &sendTime, sizeof(sendTime));
             memcpy(transmission + sizeof(temp), &sendTime, sizeof(sendTime));
-
+            */
             //send bluetooth transmission
-            temperatureSensorCharacteristic.setValue(transmission);
+            //temperatureSensorCharacteristic.setValue(transmission);
         }
         
         //light
@@ -131,7 +169,32 @@ void loop() {
             getProcessedValue = getProcessedValue/4095*100;
             getValue = (uint16_t) getProcessedValue;
             Log.info("[postprocess] Read light : %u analog read", getValue);
+            if(lightAssigned == lightArraySize)
+            {
+                //1: calculates average
+                int lightAverage = 0;
+                for(int i = 0; i < lightArraySize; i++)
+                {
+                    lightAverage += lightArray[i];
+                }
 
+                lightAverage = (uint16_t) (lightAverage / lightArraySize);
+                lightSensorCharacteristic.setValue(lightAverage);
+                //log reading
+                Log.info("1 light : %u", lightArray[0]);
+                Log.info("2 light : %u", lightArray[1]);
+                Log.info("3 light : %u", lightArray[2]);
+                Log.info("4 light : %u", lightArray[3]);
+                Log.info("5 light : %u", lightArray[4]);
+                Log.info("Average light : %u", lightAverage);
+                lightAssigned = 0;
+            }
+            else        //if the  array is not full, adds the last value to the end.
+            {
+                lightArray[lightAssigned] = getValue;
+                lightAssigned++;
+            }
+            /*
             //store data in buffer
             uint8_t* transmission[10];
             memcpy(transmission, &getValue, sizeof(getValue));
@@ -140,6 +203,7 @@ void loop() {
             memcpy(transmission + sizeof(getValue), &sendTime, sizeof(sendTime));
 
             lightSensorCharacteristic.setValue(transmission);
+            */
         }
         
         //Moisture
@@ -201,7 +265,33 @@ void loop() {
            lastHumidityUpdate = currentTime;
            uint8_t humidity = readHumidity();
             //send bluetooth transmission
-            humiditySensorCharacteristic.setValue(humidity);
+            //humiditySensorCharacteristic.setValue(humidity);
+            
+            if(humidityAssigned == humidityArraySize)
+            {
+                //1: calculates average
+                int humidityAverage = 0;
+                for(int i = 0; i < humidityArraySize; i++)
+                {
+                    humidityAverage += humidityArray[i];
+                }
+
+                humidityAverage = (uint16_t) (humidityAverage / humidityArraySize);
+                humiditySensorCharacteristic.setValue(humidityAverage);
+                //log reading
+                Log.info("1 temp : %u", humidityArray[0]);
+                Log.info("2 temp : %u", humidityArray[1]);
+                Log.info("3 temp : %u", humidityArray[2]);
+                Log.info("4 temp : %u", humidityArray[3]);
+                Log.info("5 temp : %u", humidityArray[4]);
+                Log.info("Average temp : %u", humidityAverage);
+                humidityAssigned = 0;
+            }
+            else        //if the  array is not full, adds the last value to the end.
+            {
+                humidityArray[humidityAssigned] = humidity;
+                humidityAssigned++;
+            }
         }
         delay(100);
     }
