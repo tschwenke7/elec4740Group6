@@ -217,6 +217,7 @@ void loop() {
         }
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
+            lastPublishTime = loopStart;
             publishMqtt();
         }
 
