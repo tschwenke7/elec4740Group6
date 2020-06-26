@@ -148,13 +148,13 @@ void setup() {
     client.onSubscribeFailed(mqttFailure);
     client.onPacketReceived(mqttPacketReceived);
 
-    /*
-    * You can also use IP address:
-    * uint8_t server[] = {192, 168, 1, 1};
-    * instead of domain:
-    * "test.mosquitto.org"
-    */
-    if (client.connect("test.mosquitto.org"/*server*/, 1883, "client123") && client.awaitPackets()) {
+    
+    //  You can also use IP address:
+     uint8_t server[] = {192, 168, 1, 1};
+    //  instead of domain:
+    //  "test.mosquitto.org"
+    
+    if (client.connect(/*"test.mosquitto.org"*/server, 1883, "client123") && client.awaitPackets()) {
        client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
        Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
