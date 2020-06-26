@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <string>
@@ -39,7 +39,7 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLiquidLevelReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 17 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
 SYSTEM_MODE(AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -366,7 +366,14 @@ bool publishMqtt(){
     //memcpy(buf+7, &currentHumidity, 1);
     
      buf[4] = currentMoisture;
-     buf[5] = currentLight;
+     if (currentLight > SUNNY_LIGHT_THRESHOLD)
+     {
+        buf[5] = 1;
+     }
+     else
+     {
+        buf[5] = 0;
+     }
      buf[6] = currentTemperature;
      buf[7] = currentHumidity;
 

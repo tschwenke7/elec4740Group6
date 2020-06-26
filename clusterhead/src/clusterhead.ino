@@ -340,7 +340,14 @@ bool publishMqtt(){
     //memcpy(buf+7, &currentHumidity, 1);
     
      buf[4] = currentMoisture;
-     buf[5] = currentLight;
+     if (currentLight > SUNNY_LIGHT_THRESHOLD)
+     {
+        buf[5] = 1;
+     }
+     else
+     {
+        buf[5] = 0;
+     }
      buf[6] = currentTemperature;
      buf[7] = currentHumidity;
 
