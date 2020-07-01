@@ -23,7 +23,7 @@ const char* sensorNode1ServiceUuid("754ebf5e-ce31-4300-9fd5-a8fb4ee4a811");
 
 /*Temperature sensor variables */
 //duration in millis to wait between reads
-const uint32_t TEMPERATURE_READ_DELAY =  1000;//300000;//1000; remember, this is milliseconds
+const uint32_t TEMPERATURE_READ_DELAY =  2000;//300000;//1000; remember, this is milliseconds
 unsigned long lastTemperatureUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* temperatureSensorUuid("29fba3f5-4ce8-46bc-8d75-77806db22c31");
@@ -37,7 +37,7 @@ int16_t temperatureArraySize = sizeof(temperatureArray)/sizeof(temperatureArray[
 /*Humidity sensor variables */
 // const int temperaturePin = A0; //pin reading output of temp sensor
 //duration in millis to wait between reads
-const uint32_t HUMIDITY_READ_DELAY = 1000;//300000;
+const uint32_t HUMIDITY_READ_DELAY = 2000;//300000;
 unsigned long lastHumidityUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* humiditySensorUuid("99a0d2f9-1cfa-42b3-b5ba-1b4d4341392f");
@@ -51,7 +51,7 @@ int16_t humidityArraySize = sizeof(humidityArray)/sizeof(humidityArray[0]); //Ho
 /* Light sensor variables */
 const int lightPin = A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint32_t LIGHT_READ_DELAY =  1000;// 300000;
+const uint32_t LIGHT_READ_DELAY =  2000;// 300000;
 unsigned long lastLightUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* lightSensorUuid("45be4a56-48f5-483c-8bb1-d3fee433c23c");
@@ -168,7 +168,7 @@ void loop() {
             double getProcessedValue = (double) getValue;
             getProcessedValue = getProcessedValue/4095*100;
             getValue = (uint16_t) getProcessedValue;
-            Log.info("[postprocess] Read light : %u analog read", getValue);
+            //Log.info("[postprocess] Read light : %u analog read", getValue);
             if(lightAssigned == lightArraySize)
             {
                 //1: calculates average
@@ -211,9 +211,8 @@ void loop() {
             lastMoistureUpdate = currentTime;
             uint16_t getValue = readMoisture();
             double getProcessedValue = (double) getValue;
-            getProcessedValue = getProcessedValue/4095*100;
+            getProcessedValue = (double)(getProcessedValue/4095*100);
             getValue = (uint16_t) getProcessedValue;
-            Log.info("[postprocess] Read light : %u analog read", getValue);
             //moistureSensorCharacteristic.setValue(getValue);
 
 
@@ -231,13 +230,13 @@ void loop() {
             if(moistureAssigned == moistureArraySize)
             {
                 //1: calculates average
-                int8_t moistureAverage = 0;
+                int16_t moistureAverage = 0;
                 for(int i = 0; i < moistureArraySize; i++)
                 {
                     moistureAverage += moistureArray[i];
                 }
 
-                moistureAverage = (uint16_t) moistureAverage / moistureArraySize;
+                moistureAverage = (uint16_t) (moistureAverage / moistureArraySize);
                 /*
                 //2: returns the average to the clusterhead.
                 //package together with send time in a buffer
@@ -250,6 +249,7 @@ void loop() {
 
                 */
                 //send bluetooth transmission
+                Log.info("sent value moisture : %u analog read", moistureAverage);
                 moistureSensorCharacteristic.setValue(moistureAverage);
                 //resets tempAssigned.
                 moistureAssigned = 0;

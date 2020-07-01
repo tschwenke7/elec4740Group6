@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
 #include "Particle.h"
 #include "dct.h"
 #include <string>
@@ -39,8 +39,8 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onLiquidLevelReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 void onHumanDetectorReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 17 "d:/UoN/ELEC4470/Repo/elec4740Group6/clusterhead/src/clusterhead.ino"
-SYSTEM_MODE(AUTOMATIC);
+#line 17 "c:/Users/tschw/repos/elec4740Group6/clusterhead/src/clusterhead.ino"
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
 
@@ -52,7 +52,7 @@ unsigned long loopStart = 0;
 int8_t currentTemperature = 100;//-127;
 int8_t currentHumidity = 90;//-1;
 uint8_t currentLight = 80;//0;
-uint8_t currentMoisture = 70;//-1;
+uint16_t currentMoisture = 70;//-1;
 
 uint8_t currentRainsteam = 60;//-1;
 uint8_t currentLiquid = 50;//-1;
@@ -94,7 +94,7 @@ BleScanResult scanResults[SCAN_RESULT_MAX];
 
 //MQTT client used to publish MQTT messages
 MQTT5 client;
-const int PUBLISH_DELAY = 15*60*1000;//15 minute publish delay
+const int PUBLISH_DELAY = 15*1000;//15 minute publish delay
 unsigned long lastPublishTime = millis();
 
 //functions used to handle MQTT
@@ -106,7 +106,7 @@ void mqttFailure(MQTT5_REASON_CODE reason) {
     buf = (char *)malloc(sz + 1); /* make sure you check for != NULL in real code */
     snprintf(buf, sz+1, "Failure due to reason %d", (int) reason);
     
-   Particle.publish(buf, PRIVATE);
+    Log.info("Failure due to reason: %d", (int) reason);
 }
 
 void mqttPacketReceived(char* topic, uint8_t* payload, uint16_t payloadLength, bool dup, MQTT5_QOS qos, bool retain) {
@@ -167,6 +167,7 @@ int setSunnyLightThreshold(String threshold){
 }
 
 void setup() {
+    WiFi.on(); 
 
     //setup MQTT
     client.onConnectFailed(mqttFailure);
@@ -182,10 +183,11 @@ void setup() {
     
     if (client.connect(/*"test.mosquitto.org"*/server, 1883, "client123") && client.awaitPackets()) {
        client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
-       Particle.publish("MQTT conneccted successfully!", PRIVATE);
+       Log.info("MQTT connected succsessfully!");
+    //    Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
     else{
-        Particle.publish("MQTT connection failure :(", PRIVATE);
+        Log.info("MQTT connection failure :(");
     }
 
     const uint8_t val = 0x01;
@@ -208,13 +210,13 @@ void setup() {
     // solenoidVoltageCharacteristic.onDataReceived(onSolenoidReceived, NULL);
 
     //setup particle functions
-    Particle.function("sprinklerSwitch",sprinklerSwitch);
-    Particle.function("forceMqttPublish", forceMqttPublish);
-    Particle.function("setLowSoilMoistureThreshold",setLowSoilMoistureThreshold);
-    Particle.function("setHighSoilMoistureThreshold",setHighSoilMoistureThreshold);
-    Particle.function("setTemperatureThreshold",setTemperatureThreshold);
-    Particle.function("setAirHumidityThreshold",setAirHumidityThreshold);
-    Particle.function("setSunnyLightThreshold",setSunnyLightThreshold);
+    // Particle.function("sprinklerSwitch",sprinklerSwitch);
+    // Particle.function("forceMqttPublish", forceMqttPublish);
+    // Particle.function("setLowSoilMoistureThreshold",setLowSoilMoistureThreshold);
+    // Particle.function("setHighSoilMoistureThreshold",setHighSoilMoistureThreshold);
+    // Particle.function("setTemperatureThreshold",setTemperatureThreshold);
+    // Particle.function("setAirHumidityThreshold",setAirHumidityThreshold);
+    // Particle.function("setSunnyLightThreshold",setSunnyLightThreshold);
 }
 
 void loop() {
@@ -222,7 +224,7 @@ void loop() {
     // client.publish("elec4740g6/data","test"); 
 
     //do stuff if both sensors have been connected
-    if ((sensorNode1.connected()) || (sensorNode2.connected())) {   //Add this back in when required!
+    if ((sensorNode1.connected()) && (sensorNode2.connected())) {   //Add this back in when required!
         //record start time of this loop
         loopStart = millis();
         if(isWatering == false)
@@ -250,7 +252,12 @@ void loop() {
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
             lastPublishTime = loopStart;
-            publishMqtt();
+            if(publishMqtt()){
+                Log.info("============ mqtt publish successful.");
+            }
+            else{
+                Log.info("============ mqtt publish failed.");
+            }
         }
 
         //Sensor logic for watering
@@ -351,6 +358,7 @@ void switchSprinkler(){
 }
 
 bool publishMqtt(){
+    Log.info("============Attempting to publish mqtt...");
     //initialise transmission buffer
     uint16_t payloadLength = 9+wateringEventTimes.size()*2;
     char buf[payloadLength];
@@ -431,6 +439,8 @@ void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice&
 
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     currentTemperature = receivedTemp;
+
+    Log.info("Current Temp: %u", currentTemperature);
 }
 
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -438,6 +448,8 @@ void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     memcpy(&receivedHumidity, &data[0], sizeof(receivedHumidity));
     Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
     currentHumidity = receivedHumidity;
+
+    Log.info("Current Humd: %u", currentHumidity);
 }
 
 void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -445,8 +457,10 @@ void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     uint16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(uint16_t));
     
-    Log.info("Sensor 1 - Soil moisture: %u%%", twoByteValue);
+    Log.info("Sensor 1 - Soil moisture: %u", twoByteValue);
     currentMoisture = twoByteValue;
+
+    Log.info("Current moisture: %u", currentMoisture);
 }
 
 void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -454,8 +468,10 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
     int16_t twoByteValue;
     memcpy(&twoByteValue, &data[0], sizeof(twoByteValue));
     
-    Log.info("Sensor 1 - Light: %u Lux", twoByteValue);
+    Log.info("Sensor 1 - Light: %u", twoByteValue);
     currentLight = twoByteValue;
+    
+    Log.info("currentLight: %u", currentLight);
 }
 
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
