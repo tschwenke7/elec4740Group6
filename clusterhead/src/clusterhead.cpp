@@ -167,7 +167,8 @@ int setSunnyLightThreshold(String threshold){
 }
 
 void setup() {
-    WiFi.on(); 
+    WiFi.on();
+    WiFi.connect();
 
     //setup MQTT
     client.onConnectFailed(mqttFailure);
@@ -181,13 +182,13 @@ void setup() {
     //  instead of domain:
     //  "test.mosquitto.org"
     
-    if (client.connect(/*"test.mosquitto.org"*/server, 1883, "client123") && client.awaitPackets()) {
+    if (client.connect(/*"test.mosquitto.org"*/server, 1883, "elec4740g6client") && client.awaitPackets()) {
        client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
-       Log.info("MQTT connected succsessfully!");
+       Log.info("@@@@@@@@@@@@@@@@@@@@@@@@@@MQTT connected succsessfully!");
     //    Particle.publish("MQTT conneccted successfully!", PRIVATE);
     }
     else{
-        Log.info("MQTT connection failure :(");
+        Log.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@MQTT connection failure :(");
     }
 
     const uint8_t val = 0x01;
@@ -252,6 +253,22 @@ void loop() {
         //check if it's time for an MQTT publish
         if(loopStart - lastPublishTime >= PUBLISH_DELAY){
             lastPublishTime = loopStart;
+            //test mqtt connection
+            if(client.connected()){
+                Log.info("@@@@@@@@@@@@@@@@@@@@@@@@@@MQTT is connected!");
+            }
+            else{
+                Log.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@MQTT not connected.");
+                uint8_t server[] = {192, 168, 1, 1};
+                if (client.connect(/*"test.mosquitto.org"*/server, 1883, "elec4740g6client") && client.awaitPackets()) {
+                    client.publish("elec4740g6/test", "Hello world", strlen("Hello world"));
+                    Log.info("@@@@@@@@@@@@@@@@@@@@@@@@@@MQTT connected succsessfully!");
+                }
+                else{
+                    Log.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@MQTT connection failure :(");
+                }
+            }
+
             if(publishMqtt()){
                 Log.info("============ mqtt publish successful.");
             }
@@ -440,7 +457,7 @@ void onTemperatureReceived(const uint8_t* data, size_t len, const BlePeerDevice&
     Log.info("Sensor 1 - Temperature: %u degrees Celsius", receivedTemp);
     currentTemperature = receivedTemp;
 
-    Log.info("Current Temp: %u", currentTemperature);
+    //Log.info("Current Temp: %u", currentTemperature);
 }
 
 void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -449,7 +466,7 @@ void onHumidityReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Humidity: %u%%", receivedHumidity);
     currentHumidity = receivedHumidity;
 
-    Log.info("Current Humd: %u", currentHumidity);
+    //Log.info("Current Humd: %u", currentHumidity);
 }
 
 void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -460,7 +477,7 @@ void onMoistureReceived(const uint8_t* data, size_t len, const BlePeerDevice& pe
     Log.info("Sensor 1 - Soil moisture: %u", twoByteValue);
     currentMoisture = twoByteValue;
 
-    Log.info("Current moisture: %u", currentMoisture);
+    //Log.info("Current moisture: %u", currentMoisture);
 }
 
 void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
@@ -471,7 +488,7 @@ void onLightReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer,
     Log.info("Sensor 1 - Light: %u", twoByteValue);
     currentLight = twoByteValue;
     
-    Log.info("currentLight: %u", currentLight);
+    //Log.info("currentLight: %u", currentLight);
 }
 
 void onRainsteamReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context){
