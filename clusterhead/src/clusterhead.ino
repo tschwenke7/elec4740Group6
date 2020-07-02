@@ -38,9 +38,9 @@ std::vector<int32_t> wateringEventTimes = {};
 /* Watering system threshold variables */
 int LOW_SOIL_MOISTURE_THRESHOLD = 75;
 int HIGH_SOIL_MOISTURE_THRESHOLD = 80;
-int TEMPERATURE_THRESHOLD = 32;
+int TEMPERATURE_THRESHOLD = -1;//32;
 int AIR_HUMIDITY_THRESHOLD = 100;
-int SUNNY_LIGHT_THRESHOLD = 68;
+int SUNNY_LIGHT_THRESHOLD = -1;//68;
 
 /* Bluetooth variables */
 //bluetooth devices we want to connect to and their service ids
@@ -210,6 +210,9 @@ void loop() {
             && (currentHumanDetect == 0x00)
             )
             {
+                Log.info("Turning solenoid on.");
+                solenoidVoltageCharacteristic.setValue(1);
+                isWatering = true;
                 switchSprinkler();
             }
         }
@@ -221,6 +224,9 @@ void loop() {
             || (currentHumidity > AIR_HUMIDITY_THRESHOLD)
             )
             {
+                Log.info("Turning solenoid off.");
+                solenoidVoltageCharacteristic.setValue(0);
+                isWatering = false;
                 switchSprinkler();
             }
         }
@@ -334,6 +340,7 @@ void loop() {
 }
 
 void switchSprinkler(){
+    /*
     //turn sprinkler off if it was on
     if(isWatering){
         solenoidVoltageCharacteristic.setValue(0);
@@ -342,10 +349,12 @@ void switchSprinkler(){
     else{
         solenoidVoltageCharacteristic.setValue(1);
     }
+    */
     //record the time this switch occurred
     wateringEventTimes.push_back((int32_t) Time.now());
+    // Log.info("Switch time: %d", (int32_t) Time.now());
     //flip the watering flag
-    isWatering = !isWatering;
+    //isWatering = !isWatering;
 }
 
 bool publishMqtt(){
@@ -390,8 +399,16 @@ bool publishMqtt(){
     //add watering events' durations
     buf[8] = (char) initWateringStatus;
     */
+    uint16_t duration = 0;
     for(uint i = 0; i < wateringEventTimes.size(); i ++){
-        uint16_t duration = (uint16_t) wateringEventTimes.at(i) - epochSeconds;
+        if(i == 0){
+            duration = (uint16_t) wateringEventTimes.at(i) - (epochSeconds - (PUBLISH_DELAY/1000));
+        }
+        else{
+            duration = (uint16_t) wateringEventTimes.at(i) - wateringEventTimes.at(i-1);
+        }
+        
+        // Log.info("Event duration: %d - %d = %u",wateringEventTimes.at(i), epochSeconds, duration);
         memcpy(buf+9+(2*i), &duration, sizeof(duration));
     }
     /*

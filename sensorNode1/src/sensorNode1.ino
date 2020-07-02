@@ -131,7 +131,7 @@ void loop() {
                     temperatureAverage += temperatureArray[i];
                 }
 
-                temperatureAverage = (uint16_t) (temperatureAverage / temperatureArraySize);
+                temperatureAverage = (int8_t) (temperatureAverage / temperatureArraySize);
                 temperatureSensorCharacteristic.setValue(temperatureAverage);
                 //log reading
                 Log.info("1 temp : %u", temperatureArray[0]);

@@ -22,7 +22,7 @@ const char* sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 /*rainsteam sensor variables */
 const int rainsteamPin = A4; //pin reading output of rainsteam sensor
 //duration in millis to wait between reads
-const uint16_t RAINSTEAM_READ_DELAY = 5000;
+const uint16_t RAINSTEAM_READ_DELAY = 2000;
 unsigned long lastRainsteamUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* rainsteamSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
@@ -36,7 +36,7 @@ int16_t rainsteamArraySize = sizeof(rainsteamArray)/sizeof(rainsteamArray[0]); /
 /* liquid sensor variables */
 const int liquidPin = A5;//A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t LIQUID_READ_DELAY = 5000;
+const uint16_t LIQUID_READ_DELAY = 2000;
 unsigned long lastLiquidUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* liquidSensorUuid("88ba2f5d-1e98-49af-8697-d0516df03be9");
@@ -183,6 +183,19 @@ void loop() {
         }
         //liquid
         if(currentTime - lastLiquidUpdate >= LIQUID_READ_DELAY){
+            //Records solenoid at the same time as liquid
+            if(solenoidIsOn)
+            {
+                Log.info("[solenoid] Solenoid: ON");
+                digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
+            }
+            else
+            {
+                Log.info("[solenoid] Solenoid: OFF");
+                digitalWrite(solenoidPin, LOW);
+            }
+
+
             lastLiquidUpdate = currentTime;
             uint16_t getValue = readLiquid();
             double getProcessedValue = (double) getValue;

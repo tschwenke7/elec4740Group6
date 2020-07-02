@@ -2,7 +2,7 @@
 //       THIS IS A GENERATED FILE - DO NOT EDIT       //
 /******************************************************/
 
-#line 1 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode2/src/sensorNode2.ino"
+#line 1 "c:/Users/tschw/repos/elec4740Group6/sensorNode2/src/sensorNode2.ino"
 
 #include "Particle.h"
 #include "dct.h"
@@ -22,7 +22,7 @@ int16_t readRainsteamAna();
 uint16_t readLiquid();
 uint8_t readHumanDetector();
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-#line 13 "d:/UoN/ELEC4470/Repo/elec4740Group6/sensorNode2/src/sensorNode2.ino"
+#line 13 "c:/Users/tschw/repos/elec4740Group6/sensorNode2/src/sensorNode2.ino"
 SYSTEM_MODE(MANUAL);     //In automatic mode so it can connect to cloud
 
 SerialLogHandler logHandler(LOG_LEVEL_TRACE);
@@ -35,7 +35,7 @@ const char* sensorNode2ServiceUuid("97728ad9-a998-4629-b855-ee2658ca01f7");
 /*rainsteam sensor variables */
 const int rainsteamPin = A4; //pin reading output of rainsteam sensor
 //duration in millis to wait between reads
-const uint16_t RAINSTEAM_READ_DELAY = 1000;
+const uint16_t RAINSTEAM_READ_DELAY = 2000;
 unsigned long lastRainsteamUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* rainsteamSensorUuid("bc7f18d9-2c43-408e-be25-62f40645987c");
@@ -49,7 +49,7 @@ int16_t rainsteamArraySize = sizeof(rainsteamArray)/sizeof(rainsteamArray[0]); /
 /* liquid sensor variables */
 const int liquidPin = A5;//A2; //pin reading output of sensor
 //duration in millis to wait between reads
-const uint16_t LIQUID_READ_DELAY = 1000;
+const uint16_t LIQUID_READ_DELAY = 2000;
 unsigned long lastLiquidUpdate = 0;//last absolute time a recording was taken
 //advertised bluetooth characteristic
 const char* liquidSensorUuid("88ba2f5d-1e98-49af-8697-d0516df03be9");
@@ -140,7 +140,6 @@ void loop() {
         */
         //Log.info("Solenoid Pin: %b", digitalRead(solenoidPin));
         
-        /*
         if(solenoidIsOn)
         {
             digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
@@ -149,7 +148,6 @@ void loop() {
         {
             digitalWrite(solenoidPin, LOW);
         }
-        */
         long currentTime = millis();//record current time
         /* Check if it's time to take another reading for each sensor 
            If it is, update "lastUpdate" time, then read and update the appropriate characteristic
@@ -198,6 +196,19 @@ void loop() {
         }
         //liquid
         if(currentTime - lastLiquidUpdate >= LIQUID_READ_DELAY){
+            //Records solenoid at the same time as liquid
+            if(solenoidIsOn)
+            {
+                Log.info("[solenoid] Solenoid: ON");
+                digitalWrite(solenoidPin, HIGH);        //Should write high to the solenoid pin
+            }
+            else
+            {
+                Log.info("[solenoid] Solenoid: OFF");
+                digitalWrite(solenoidPin, LOW);
+            }
+
+
             lastLiquidUpdate = currentTime;
             uint16_t getValue = readLiquid();
             double getProcessedValue = (double) getValue;
